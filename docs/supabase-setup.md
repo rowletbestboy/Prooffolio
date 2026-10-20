@@ -1,0 +1,65 @@
+# Supabase setup for Prooffolio
+
+This guide creates a development Supabase project and connects the Flutter app using its public client values. You do not need to share a password, secret key, or service-role key with me.
+
+## 1. Create a project
+
+1. Sign in to the Supabase dashboard and create a new project named `Prooffolio`.
+2. Choose a database password and save it in your password manager. The Flutter app does not need this password.
+3. Choose a region close to your expected users and wait until the project is ready.
+4. Open **Project Settings ? API Keys** (or **Connect**, depending on the dashboard view). Copy the **Project URL** and the **Publishable key** (`sb_publishable_...`).
+
+The publishable key is designed for mobile clients and is safe to ship with a properly secured database. Never copy a `secret` or legacy `service_role` key into Flutter; those bypass Row Level Security.
+
+## 2. Configure email sign-in
+
+1. Open **Authentication ? Sign In / Providers ? Email**.
+2. Enable email/password sign-in.
+3. Keep email confirmation enabled for production. For development, either confirm each test account or temporarily disable confirmation in the project dashboard. When confirmation is enabled, account creation can succeed without immediately creating an active session.
+4. In **Authentication ? URL Configuration**, set the Site URL to a real web URL you control when available. For local development, use the project's default URL if the dashboard requires a value.
+5. Add the mobile callback URL to **Redirect URLs**: `com.prooffolio.app_name://login-callback/`. This matches the current Android application ID. Keep that ID stable after publishing.
+
+Supabase email confirmation and password recovery links need a configured redirect destination. The Android app has a matching deep-link intent filter; confirmation and recovery callbacks use the URI above.
+
+## 3. Run the Flutter app with client configuration
+
+Before running the connected app, open **SQL Editor → New query** in Supabase, paste the contents of `app_name/supabase/migrations/20261020170000_create_profiles.sql`, and run it. This creates the initial profile table and owner-only Row Level Security policies required by the session gate. The migration can be run again safely if it has already created the table and policies.
+
+To use the Projects tab, run the next migration too: paste `app_name/supabase/migrations/20261021100000_create_projects.sql` into a new SQL Editor query and run it. It creates the owner-only project table and policies. Projects stay private drafts; public access is not enabled by this migration.
+
+To use the Skills tab and connect skills to projects, run `app_name/supabase/migrations/20261022100000_create_skills_and_project_skills.sql` the same way. It creates private skill records, project links that require both records to belong to the signed-in user, and the `save_skill_with_projects` function used to save each skill and its links together.
+
+To add inclusive profile details and broad occupation categories, run `app_name/supabase/migrations/20261023100000_expand_profile_and_skills.sql` after the first three migrations. It adds optional profile background fields and private education and experience records, then maps existing technology-specific skill categories to Technology and digital work while preserving skill names, proficiency labels, and project links. Apply the migrations in this order: profiles, projects, skills, then inclusive profile and skills expansion. Existing profile identity fields remain unchanged. All background questions are optional, and experience supports volunteer, community, caregiving, freelance, and independent work.
+
+To add certifications and achievements, run `app_name/supabase/migrations/20261024100000_create_portfolio_records.sql` after the previous migration. It creates one private, owner-only record table for certifications and achievements. Both can be added without a project; certification expiration dates are optional. Public portfolios and file attachments are not enabled yet, so these records remain private.
+
+To check whether the table exists, run `select to_regclass('public.profiles');` in SQL Editor. The result should be `profiles`. If you need to rerun the migration, open the file in the project and copy the whole file into a new query before pressing **Run**.
+
+From PowerShell, in the `app_name` directory, run:
+
+```powershell
+flutter run `
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co `
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY
+```
+
+Replace both placeholders with the values from the dashboard. These values are compiled into the app; use only the publishable key. Do not use `--dart-define` for a secret/service-role key.
+
+For repeatable local runs, keep the values in a local ignored file or IDE run configuration and do not commit them. The publishable key is not a password, but avoiding unnecessary public config commits makes environment changes easier to manage.
+
+## 4. When you finish
+
+Tell me once the project exists. You may then provide the **Project URL** and **Publishable key** if you want me to verify the connected flow. Do not send the database password, secret key, service-role key, email password, or any user's login credentials.
+
+## Before release
+
+- Confirm the production redirect URLs and email templates.
+- Add and review the versioned database schema and Row Level Security policies before storing profile or portfolio data.
+- Set up production secrets only in Supabase/server-side services. AI provider keys and database secret keys must never ship in the Android app.
+
+## Official references
+
+- [Supabase Flutter quickstart](https://supabase.com/docs/guides/getting-started/quickstarts/flutter)
+- [Supabase API keys and client key safety](https://supabase.com/docs/guides/getting-started/api-keys)
+- [Supabase native mobile deep linking](https://supabase.com/docs/guides/auth/native-mobile-deep-linking?platform=flutter)
+- [Supabase redirect URL configuration](https://supabase.com/docs/guides/auth/redirect-urls)
