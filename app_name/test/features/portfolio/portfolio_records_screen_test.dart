@@ -6,6 +6,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('credential editor fits a narrow viewport', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PortfolioRecordsScreen(
+          repository: _FakePortfolioRecordRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(AlertDialog)).width,
+      lessThanOrEqualTo(320),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Home opens certifications and achievements without a project', (
     WidgetTester tester,
   ) async {

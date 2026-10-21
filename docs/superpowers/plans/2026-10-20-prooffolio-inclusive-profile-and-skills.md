@@ -56,7 +56,7 @@
 - [x] Add nullable profile fields and normalized education/experience tables with owner-only RLS and owner-scoped composite keys.
 - [x] Reclassify existing technology-specific skill category values to `technology_digital`, preserving skill names, statuses, and links; replace the category constraint with the broad set.
 - [x] Implement Supabase repository mappings and preserve the existing onboarding save behavior.
-- [ ] Run `flutter test test/features/profile/profile_test.dart test/features/skills/skill_test.dart --no-pub` and `dart analyze`.
+- [x] Run `flutter test test/features/profile/profile_test.dart test/features/skills/skill_test.dart --no-pub` (7 tests passed) and `dart analyze` (no issues).
 
 ### Task 3: Profile and background editor
 
@@ -69,9 +69,9 @@
 - [x] Test searchable occupation choice and custom role/title.
 - [x] Test a user can save only a short profile without education or experience.
 - [x] Test adding an education entry and current volunteer/independent experience.
-- [ ] Test inline validation and visible save completion/error states.
+- [x] Test inline education-title validation and visible profile save completion/error states.
 - [x] Implement the scrollable Material 3 editor with one primary profile save action and separate add/edit/delete controls for repeatable records.
-- [ ] Run `flutter test test/features/profile/profile_background_screen_test.dart --no-pub`.
+- [x] Run `flutter test test/features/profile/profile_background_screen_test.dart --no-pub` (5 tests passed).
 
 ### Task 4: Authenticated navigation and documentation
 
@@ -86,4 +86,4 @@
 - [x] Update Home copy to welcome projects, learning, and work experience without implying a project is required.
 - [x] Test profile navigation and keep all four existing bottom destinations reachable.
 - [x] Document migration order and order credentials/achievements before evidence uploads.
-- [x] Format touched Dart files and run `flutter test --no-pub` (26 tests passed) and `dart analyze` (no issues).
+- [x] Format touched Dart files and run `flutter test --no-pub` (35 tests passed) and `dart analyze` (no issues).

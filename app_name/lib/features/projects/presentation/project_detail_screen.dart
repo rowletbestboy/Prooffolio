@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 import 'project_form_screen.dart';
@@ -73,6 +75,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Project details'),
@@ -92,12 +95,28 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppTheme.contentMaxWidth),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            padding: EdgeInsets.fromLTRB(pageGutter, 8, pageGutter, 32),
             children: [
-              Text(_project.title, style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppIconTile(
+                    icon: Icons.work_outline,
+                    size: 52,
+                    iconSize: 25,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      _project.title,
+                      style: theme.textTheme.headlineMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -164,9 +183,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               _section(context, 'Repository', _project.repositoryUrl),
               _section(context, 'Live demo', _project.demoUrl),
               const SizedBox(height: 24),
-              Text(
-                'Evidence and skills can be linked to this project in the next milestone.',
-                style: theme.textTheme.bodyMedium,
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.lock_outline, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'This project is private. Add supporting links and files from your Evidence library.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

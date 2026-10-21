@@ -1,3 +1,6 @@
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/profile.dart';
@@ -28,6 +31,14 @@ abstract interface class ProfileBackgroundRepository {
     String? id,
   });
   Future<void> deleteExperience(String userId, String id);
+  Future<String> uploadProfilePhoto(
+    String userId,
+    Uint8List bytes,
+    String fileName,
+    String contentType,
+  );
+  Future<void> deleteProfilePhoto(String userId, String path);
+  Future<String> createProfilePhotoSignedUrl(String path);
 }
 
 class SupabaseProfileRepository
@@ -133,8 +144,9 @@ class SupabaseProfileRepository
         .eq('user_id', userId)
         .eq('id', id)
         .select('id');
-    if (rows.isEmpty)
+    if (rows.isEmpty) {
       throw StateError('Education record could not be deleted.');
+    }
   }
 
   @override
@@ -183,7 +195,74 @@ class SupabaseProfileRepository
         .eq('user_id', userId)
         .eq('id', id)
         .select('id');
-    if (rows.isEmpty)
+    if (rows.isEmpty) {
       throw StateError('Experience record could not be deleted.');
+    }
   }
+
+  @override
+  Future<String> uploadProfilePhoto(
+    String userId,
+    Uint8List bytes,
+    String fileName,
+    String contentType,
+  ) async {
+    _requireCurrentUser(userId);
+    final path = '$userId/${_newPhotoFileName(fileName, contentType)}';
+    await _client.storage
+        .from('profile-photos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    return path;
+  }
+
+  @override
+  Future<void> deleteProfilePhoto(String userId, String path) async {
+    _requireCurrentUser(userId);
+    if (!path.startsWith('$userId/')) {
+      throw const AuthException('You can only delete your own profile photo.');
+    }
+    await _client.storage.from('profile-photos').remove([path]);
+  }
+
+  @override
+  Future<String> createProfilePhotoSignedUrl(String path) async =>
+      await _client.storage
+          .from('profile-photos')
+          .createSignedUrl(path, const Duration(minutes: 2).inSeconds);
+
+  void _requireCurrentUser(String userId) {
+    if (_client.auth.currentUser?.id != userId) {
+      throw const AuthException('Please sign in again.');
+    }
+  }
+}
+
+String _newPhotoFileName(String fileName, String contentType) {
+  final extension = switch (contentType.toLowerCase()) {
+    'image/jpeg' => 'jpg',
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    _ => _safeExtension(fileName),
+  };
+  final token = List.generate(
+    32,
+    (_) => Random.secure().nextInt(16).toRadixString(16),
+  ).join();
+  return '$token.$extension';
+}
+
+String _safeExtension(String fileName) {
+  final dotIndex = fileName.lastIndexOf('.');
+  final extension = dotIndex == -1 ? '' : fileName.substring(dotIndex + 1);
+  final normalized = extension.toLowerCase();
+  return switch (normalized) {
+    'jpg' || 'jpeg' => 'jpg',
+    'png' => 'png',
+    'webp' => 'webp',
+    _ => 'jpg',
+  };
 }

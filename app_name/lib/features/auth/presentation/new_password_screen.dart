@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_mark.dart';
+import '../../../core/widgets/app_icon_tile.dart';
+
 class NewPasswordScreen extends StatefulWidget {
   const NewPasswordScreen({
     super.key,
@@ -49,6 +54,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       body: SafeArea(
         child: Align(
@@ -56,67 +62,82 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
+              padding: EdgeInsets.fromLTRB(pageGutter, 48, pageGutter, 32),
               child: Form(
                 key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Prooffolio', style: textTheme.titleLarge),
-                    const SizedBox(height: 40),
-                    Text(
-                      'Choose a new password',
-                      style: textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Use at least 8 characters and keep it somewhere safe.',
-                      style: textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 24),
-                    TextFormField(
-                      key: const Key('newPasswordField'),
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'New password',
+                child: Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.lightSlate),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AppBrandMark(),
+                      const SizedBox(height: 30),
+                      const AppIconTile(
+                        icon: Icons.lock_reset_outlined,
+                        color: AppColors.indigo,
                       ),
-                      validator: (value) => (value?.length ?? 0) >= 8
-                          ? null
-                          : 'Use at least 8 characters',
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      key: const Key('confirmNewPasswordField'),
-                      controller: _confirmationController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm new password',
-                      ),
-                      validator: (value) =>
-                          value == _passwordController.text &&
-                              (value?.isNotEmpty ?? false)
-                          ? null
-                          : 'Passwords do not match',
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                        'Choose a new password',
+                        style: textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Use at least 8 characters and keep it somewhere safe.',
+                        style: textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 24),
+                      TextFormField(
+                        key: const Key('newPasswordField'),
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'New password',
+                        ),
+                        validator: (value) => (value?.length ?? 0) >= 8
+                            ? null
+                            : 'Use at least 8 characters',
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        key: const Key('confirmNewPasswordField'),
+                        controller: _confirmationController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Confirm new password',
+                        ),
+                        validator: (value) =>
+                            value == _passwordController.text &&
+                                (value?.isNotEmpty ?? false)
+                            ? null
+                            : 'Passwords do not match',
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _saving ? null : _save,
+                          child: Text(
+                            _saving ? 'Saving…' : 'Save new password',
+                          ),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: Text(_saving ? 'Saving…' : 'Save new password'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

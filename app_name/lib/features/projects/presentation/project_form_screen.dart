@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 
@@ -168,6 +170,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
   Widget build(BuildContext context) {
     final isEditing = widget.project != null;
     final theme = Theme.of(context);
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(title: Text(isEditing ? 'Edit project' : 'New project')),
       bottomNavigationBar: SafeArea(
@@ -186,11 +189,11 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppTheme.contentMaxWidth),
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: EdgeInsets.fromLTRB(pageGutter, 8, pageGutter, 32),
               children: [
                 Text(
                   'Start with the details you know. You can add evidence and skills later.',
@@ -383,10 +386,24 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     );
   }
 
-  Widget _sectionLabel(BuildContext context, String label) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Text(label, style: Theme.of(context).textTheme.titleMedium),
-  );
+  Widget _sectionLabel(BuildContext context, String label) {
+    final icon = switch (label) {
+      'Overview' => Icons.title_outlined,
+      'What you made' => Icons.lightbulb_outline,
+      'Your contribution' => Icons.handyman_outlined,
+      _ => Icons.calendar_month_outlined,
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          AppIconTile(icon: icon, size: 36, iconSize: 18),
+          const SizedBox(width: 10),
+          Text(label, style: Theme.of(context).textTheme.titleMedium),
+        ],
+      ),
+    );
+  }
 
   String? _validateOptionalUrl(String? value) {
     final raw = value?.trim() ?? '';

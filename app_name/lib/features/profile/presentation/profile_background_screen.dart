@@ -1,17 +1,130 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../data/profile_repository.dart';
 import '../domain/profile.dart';
+
+class PickedProfilePhoto {
+  const PickedProfilePhoto({
+    required this.fileName,
+    required this.mimeType,
+    required this.bytes,
+  });
+
+  final String fileName;
+  final String mimeType;
+  final Uint8List bytes;
+}
+
+abstract interface class ProfilePhotoPicker {
+  Future<PickedProfilePhoto?> pickPhoto();
+}
+
+class PlatformProfilePhotoPicker implements ProfilePhotoPicker {
+  @override
+  Future<PickedProfilePhoto?> pickPhoto() async {
+    final file = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: ProfilePhotoPolicy.allowedExtensions,
+    );
+    if (file == null) return null;
+    final bytes = await file.readAsBytes();
+    String? mimeType;
+    try {
+      mimeType = file.xFile.mimeType;
+    } on UnimplementedError {
+      mimeType = null;
+    }
+    return PickedProfilePhoto(
+      fileName: file.name,
+      mimeType: ProfilePhotoPolicy.normaliseMimeType(mimeType, file.name),
+      bytes: bytes,
+    );
+  }
+}
+
+abstract final class ProfilePhotoPolicy {
+  static const maxBytes = 5000000;
+  static const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+  static const allowedMimeTypes = {'image/jpeg', 'image/png', 'image/webp'};
+
+  static String normaliseMimeType(String? value, String fileName) {
+    final mimeType = value?.toLowerCase().trim();
+    if (mimeType == 'image/jpg') return 'image/jpeg';
+    if (mimeType != null && mimeType.isNotEmpty) return mimeType;
+    final extension = fileName.split('.').last.toLowerCase();
+    return switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => mimeType ?? '',
+    };
+  }
+
+  static String? validate(PickedProfilePhoto photo) {
+    if (!allowedMimeTypes.contains(photo.mimeType) ||
+        !_matchesImageSignature(photo)) {
+      return 'Choose a JPG, PNG, or WEBP image.';
+    }
+    if (photo.bytes.isEmpty) return 'The selected image is empty.';
+    if (photo.bytes.lengthInBytes > maxBytes) {
+      return 'Choose an image smaller than 5 MB.';
+    }
+    return null;
+  }
+
+  static bool _matchesImageSignature(PickedProfilePhoto photo) {
+    final bytes = photo.bytes;
+    return switch (photo.mimeType) {
+      'image/jpeg' =>
+        bytes.length >= 3 &&
+            bytes[0] == 0xff &&
+            bytes[1] == 0xd8 &&
+            bytes[2] == 0xff,
+      'image/png' =>
+        bytes.length >= 8 &&
+            bytes[0] == 0x89 &&
+            bytes[1] == 0x50 &&
+            bytes[2] == 0x4e &&
+            bytes[3] == 0x47 &&
+            bytes[4] == 0x0d &&
+            bytes[5] == 0x0a &&
+            bytes[6] == 0x1a &&
+            bytes[7] == 0x0a,
+      'image/webp' =>
+        bytes.length >= 12 &&
+            bytes[0] == 0x52 &&
+            bytes[1] == 0x49 &&
+            bytes[2] == 0x46 &&
+            bytes[3] == 0x46 &&
+            bytes[8] == 0x57 &&
+            bytes[9] == 0x45 &&
+            bytes[10] == 0x42 &&
+            bytes[11] == 0x50,
+      _ => false,
+    };
+  }
+}
 
 class ProfileBackgroundScreen extends StatefulWidget {
   const ProfileBackgroundScreen({
     super.key,
     required this.repository,
     required this.userId,
+    this.photoPicker,
+    this.accountEmail,
   });
 
   final ProfileBackgroundRepository repository;
   final String userId;
+  final ProfilePhotoPicker? photoPicker;
+  final String? accountEmail;
 
   @override
   State<ProfileBackgroundScreen> createState() =>
@@ -26,6 +139,13 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
   final _interests = TextEditingController();
   final _targetRoles = TextEditingController();
   final _occupationSearch = TextEditingController();
+  final _contactEmail = TextEditingController();
+  final _phone = TextEditingController();
+  final _githubUrl = TextEditingController();
+  final _linkedInUrl = TextEditingController();
+  final _jobstreetUrl = TextEditingController();
+  final _whatsAppNumber = TextEditingController();
+  final List<_AdditionalLinkControllers> _additionalLinks = [];
   late Future<_ProfileData> _dataFuture;
   late ProfileBackground _profile;
   List<EducationRecord> _education = [];
@@ -35,7 +155,11 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
   bool _populated = false;
   bool _listsPopulated = false;
   bool _saving = false;
-  String? _error;
+  bool _photoSaving = false;
+  String? _photoUrl;
+  Uint8List? _photoPreviewBytes;
+  Timer? _photoRefreshTimer;
+  String? _scheduledPhotoPath;
 
   @override
   void initState() {
@@ -51,14 +175,75 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
     _interests.dispose();
     _targetRoles.dispose();
     _occupationSearch.dispose();
+    _contactEmail.dispose();
+    _phone.dispose();
+    _githubUrl.dispose();
+    _linkedInUrl.dispose();
+    _jobstreetUrl.dispose();
+    _whatsAppNumber.dispose();
+    for (final link in _additionalLinks) {
+      link.dispose();
+    }
+    _photoRefreshTimer?.cancel();
     super.dispose();
   }
 
-  Future<_ProfileData> _loadData() async => _ProfileData(
-    profile: await widget.repository.loadProfile(widget.userId),
-    education: await widget.repository.listEducation(widget.userId),
-    experience: await widget.repository.listExperience(widget.userId),
-  );
+  void _schedulePhotoUrlRefresh(String? photoPath) {
+    if (photoPath == _scheduledPhotoPath &&
+        (_photoRefreshTimer?.isActive ?? false)) {
+      return;
+    }
+    _photoRefreshTimer?.cancel();
+    _scheduledPhotoPath = photoPath;
+    if (photoPath == null) return;
+    _photoRefreshTimer = Timer(const Duration(seconds: 90), () {
+      unawaited(_refreshPhotoUrl(photoPath));
+    });
+  }
+
+  Future<void> _refreshPhotoUrl(String photoPath) async {
+    if (!mounted || _profile.photoPath != photoPath) return;
+    if (_saving || _photoSaving) {
+      _schedulePhotoUrlRefresh(photoPath);
+      return;
+    }
+    try {
+      final signedUrl = await widget.repository.createProfilePhotoSignedUrl(
+        photoPath,
+      );
+      if (!mounted || _profile.photoPath != photoPath) return;
+      setState(() => _photoUrl = signedUrl);
+    } catch (_) {
+      _showError('Profile photo preview could not be refreshed.');
+    } finally {
+      if (mounted && _profile.photoPath == photoPath) {
+        _schedulePhotoUrlRefresh(photoPath);
+      }
+    }
+  }
+
+  Future<_ProfileData> _loadData() async {
+    final values = await Future.wait([
+      widget.repository.loadProfile(widget.userId),
+      widget.repository.listEducation(widget.userId),
+      widget.repository.listExperience(widget.userId),
+    ]);
+    final profile = values[0] as ProfileBackground?;
+    String? photoUrl;
+    if (profile?.photoPath case final path?) {
+      try {
+        photoUrl = await widget.repository.createProfilePhotoSignedUrl(path);
+      } catch (_) {
+        // The form remains usable even when the private preview cannot load.
+      }
+    }
+    return _ProfileData(
+      profile: profile,
+      education: values[1] as List<EducationRecord>,
+      experience: values[2] as List<ExperienceRecord>,
+      photoUrl: photoUrl,
+    );
+  }
 
   void _populate(ProfileBackground profile) {
     if (_populated) return;
@@ -68,29 +253,32 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
     _occupationTitle.text = profile.occupationTitle;
     _interests.text = profile.interests.join(', ');
     _targetRoles.text = profile.targetRoles.join(', ');
+    _contactEmail.text = profile.contactEmail?.trim().isNotEmpty == true
+        ? profile.contactEmail!
+        : widget.accountEmail?.trim() ?? '';
+    _phone.text = profile.phone ?? '';
+    _githubUrl.text = profile.githubUrl ?? '';
+    _linkedInUrl.text = profile.linkedInUrl ?? '';
+    _jobstreetUrl.text = profile.jobstreetUrl ?? '';
+    _whatsAppNumber.text = profile.whatsAppNumber ?? '';
+    _additionalLinks.addAll(
+      profile.additionalLinks.map(
+        (link) => _AdditionalLinkControllers(link.label, link.url),
+      ),
+    );
     _occupationCategory = profile.occupationCategory;
     _careerStage = profile.careerStage;
     _populated = true;
   }
 
   Future<void> _saveProfile() async {
+    if (_saving || _photoSaving) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _saving = true;
-      _error = null;
     });
     try {
-      final updated = ProfileBackground(
-        displayName: _profile.displayName,
-        username: _profile.username,
-        headline: _headline.text,
-        bio: _bio.text,
-        occupationCategory: _occupationCategory,
-        occupationTitle: _occupationTitle.text,
-        careerStage: _careerStage,
-        interests: _splitList(_interests.text),
-        targetRoles: _splitList(_targetRoles.text),
-      );
+      final updated = _profileWithCurrentForm(_profile.photoPath);
       await widget.repository.saveBackground(widget.userId, updated);
       _profile = updated;
       if (mounted) {
@@ -100,10 +288,165 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Profile could not be saved. Try again.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile could not be saved. Try again.'),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  ProfileBackground _profileWithCurrentForm(String? photoPath) =>
+      ProfileBackground(
+        displayName: _profile.displayName,
+        username: _profile.username,
+        headline: _headline.text,
+        bio: _bio.text,
+        occupationCategory: _occupationCategory,
+        occupationTitle: _occupationTitle.text,
+        careerStage: _careerStage,
+        interests: _splitList(_interests.text),
+        targetRoles: _splitList(_targetRoles.text),
+        photoPath: photoPath,
+        contactEmail: _normaliseEmail(_contactEmail.text),
+        phone: _normalisePhone(_phone.text),
+        githubUrl: _normaliseUrl(_githubUrl.text),
+        linkedInUrl: _normaliseUrl(_linkedInUrl.text),
+        jobstreetUrl: _normaliseUrl(_jobstreetUrl.text),
+        whatsAppNumber: _normaliseWhatsAppNumber(_whatsAppNumber.text),
+        additionalLinks: _additionalLinks
+            .where(
+              (link) =>
+                  link.label.text.trim().isNotEmpty &&
+                  link.url.text.trim().isNotEmpty,
+            )
+            .map(
+              (link) => ProfileContactLink(
+                label: link.label.text.trim(),
+                url: _normaliseUrl(link.url.text)!,
+              ),
+            )
+            .toList(growable: false),
+      );
+
+  Future<void> _choosePhoto() async {
+    if (_saving || _photoSaving) return;
+    setState(() => _photoSaving = true);
+    try {
+      final picker = widget.photoPicker ?? PlatformProfilePhotoPicker();
+      PickedProfilePhoto? photo;
+      try {
+        photo = await picker.pickPhoto();
+      } catch (_) {
+        _showError('The selected photo could not be read. Try another image.');
+        return;
+      }
+      if (!mounted || photo == null) return;
+      final validationError = ProfilePhotoPolicy.validate(photo);
+      if (validationError != null) {
+        _showError(validationError);
+        return;
+      }
+
+      final previousPath = _profile.photoPath;
+      final previousPreview = _photoPreviewBytes;
+      final previousPhotoUrl = _photoUrl;
+      setState(() => _photoPreviewBytes = photo!.bytes);
+
+      String? uploadedPath;
+      try {
+        uploadedPath = await widget.repository.uploadProfilePhoto(
+          widget.userId,
+          photo.bytes,
+          photo.fileName,
+          photo.mimeType,
+        );
+        final updated = _profile.copyWithPhoto(uploadedPath);
+        await widget.repository.saveBackground(widget.userId, updated);
+        String? signedUrl;
+        try {
+          signedUrl = await widget.repository.createProfilePhotoSignedUrl(
+            uploadedPath,
+          );
+        } catch (_) {
+          // The selected bytes remain available for the current preview.
+        }
+        if (!mounted) return;
+        setState(() {
+          _profile = updated;
+          _photoUrl = signedUrl;
+          _photoPreviewBytes = photo!.bytes;
+        });
+        if (previousPath != null) {
+          try {
+            await widget.repository.deleteProfilePhoto(
+              widget.userId,
+              previousPath,
+            );
+          } catch (_) {
+            // A replaced private object can be cleaned up later.
+          }
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Profile photo saved')));
+        }
+      } catch (_) {
+        if (uploadedPath != null) {
+          try {
+            await widget.repository.deleteProfilePhoto(
+              widget.userId,
+              uploadedPath,
+            );
+          } catch (_) {
+            // Keep the original error visible even when cleanup also fails.
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _photoPreviewBytes = previousPreview;
+            _photoUrl = previousPhotoUrl;
+          });
+          _showError('Profile photo could not be saved. Try again.');
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _photoSaving = false);
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    final currentPath = _profile.photoPath;
+    if (currentPath == null || _saving || _photoSaving) return;
+    setState(() => _photoSaving = true);
+    try {
+      if (!await _confirmDelete('Remove this profile photo?') || !mounted) {
+        return;
+      }
+      final updated = _profile.copyWithPhoto(null);
+      await widget.repository.saveBackground(widget.userId, updated);
+      try {
+        await widget.repository.deleteProfilePhoto(widget.userId, currentPath);
+      } catch (_) {
+        // The photo is no longer referenced by the profile, even if cleanup fails.
+      }
+      if (!mounted) return;
+      setState(() {
+        _profile = updated;
+        _photoUrl = null;
+        _photoPreviewBytes = null;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile photo removed')));
+    } catch (_) {
+      _showError('Profile photo could not be removed. Try again.');
+    } finally {
+      if (mounted) setState(() => _photoSaving = false);
     }
   }
 
@@ -217,8 +560,9 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 10, 20, 14),
         child: FilledButton(
-          onPressed: _saving ? null : _saveProfile,
-          child: _saving
+          key: const Key('saveProfileButton'),
+          onPressed: _saving || _photoSaving ? null : _saveProfile,
+          child: _saving || _photoSaving
               ? const SizedBox.square(
                   dimension: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
@@ -246,6 +590,8 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
             );
           }
           _populate(data.profile!);
+          _photoUrl ??= data.photoUrl;
+          _schedulePhotoUrlRefresh(_profile.photoPath);
           if (!_listsPopulated) {
             _education = data.education;
             _experience = data.experience;
@@ -254,22 +600,60 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+              constraints: const BoxConstraints(
+                maxWidth: AppTheme.contentMaxWidth,
+              ),
               child: Form(
                 key: _formKey,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width),
+                    16,
+                    AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width),
+                    24,
+                  ),
                   children: [
-                    Text(
-                      'A fuller picture of your work',
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tell people what you do, what you are learning, and the experience you want them to see. Every field here is optional.',
-                      style: theme.textTheme.bodyLarge,
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.cardRadius,
+                        ),
+                        border: Border.all(color: AppColors.lightSlate),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AppIconTile(
+                            icon: Icons.person_outline,
+                            size: 46,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'A fuller picture of your work',
+                                  style: theme.textTheme.titleLarge,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Tell people what you do, what you are learning, and the experience you want them to see. Every field here is optional.',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
+                    _sectionHeading(context, 'Profile photo'),
+                    const SizedBox(height: 12),
+                    _profilePhotoEditor(context),
+                    const SizedBox(height: 28),
                     _sectionHeading(context, 'About you'),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -349,6 +733,114 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                       ),
                     ),
                     const SizedBox(height: 28),
+                    _sectionHeading(context, 'Contact details'),
+                    const SizedBox(height: 6),
+                    Text(
+                      'These details stay private until you choose them for a published portfolio.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profileContactEmailField'),
+                      controller: _contactEmail,
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Public contact email (optional)',
+                        hintText: 'you@example.com',
+                      ),
+                      validator: _validateOptionalEmail,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profilePhoneField'),
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone (optional)',
+                        hintText: '+65 8123 4567',
+                      ),
+                      validator: _validateOptionalPhone,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profileGithubField'),
+                      controller: _githubUrl,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'GitHub URL (optional)',
+                        hintText: 'github.com/your-name',
+                      ),
+                      validator: _validateOptionalUrl,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profileLinkedInField'),
+                      controller: _linkedInUrl,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'LinkedIn URL (optional)',
+                        hintText: 'linkedin.com/in/your-name',
+                      ),
+                      validator: _validateOptionalUrl,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profileJobStreetField'),
+                      controller: _jobstreetUrl,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'JobStreet URL (optional)',
+                        hintText: 'jobstreet.com/profile/your-name',
+                      ),
+                      validator: _validateOptionalUrl,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profileWhatsAppField'),
+                      controller: _whatsAppNumber,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        labelText: 'WhatsApp number (optional)',
+                        helperText: 'Include your country code',
+                        hintText: '+65 8123 4567',
+                      ),
+                      validator: _validateOptionalWhatsApp,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Additional links (optional)',
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Add a label so visitors understand each link.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    for (
+                      var index = 0;
+                      index < _additionalLinks.length;
+                      index++
+                    )
+                      _additionalLinkEditor(index, _additionalLinks[index]),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        key: const Key('addProfileLinkButton'),
+                        onPressed: () => setState(
+                          () => _additionalLinks.add(
+                            _AdditionalLinkControllers(),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add_link),
+                        label: const Text('Add another link'),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
                     _sectionHeading(context, 'Education and training'),
                     const SizedBox(height: 6),
                     Text(
@@ -361,6 +853,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                     else
                       for (final record in _education)
                         _BackgroundRecordTile(
+                          icon: Icons.school_outlined,
                           title: record.title,
                           subtitle: [
                             if (record.institution.isNotEmpty)
@@ -392,6 +885,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                     else
                       for (final record in _experience)
                         _BackgroundRecordTile(
+                          icon: Icons.work_outline,
                           title: record.title,
                           subtitle: [
                             record.type.label,
@@ -411,13 +905,6 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                         label: const Text('Add experience'),
                       ),
                     ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _error!,
-                        style: TextStyle(color: theme.colorScheme.error),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -511,8 +998,166 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
     ),
   );
 
-  Widget _sectionHeading(BuildContext context, String title) =>
-      Text(title, style: Theme.of(context).textTheme.titleLarge);
+  Widget _profilePhotoEditor(BuildContext context) {
+    final hasPhoto = _photoPreviewBytes != null || _photoUrl != null;
+    final preview = _photoPreviewBytes == null
+        ? _photoUrl == null
+              ? null
+              : Image.network(
+                  _photoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const Icon(Icons.broken_image_outlined, size: 36),
+                )
+        : Image.memory(_photoPreviewBytes!, fit: BoxFit.cover);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSubtle,
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+        border: Border.all(color: AppColors.lightSlate),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: ColoredBox(
+                    color: AppColors.white,
+                    child:
+                        preview ?? const Icon(Icons.person_outline, size: 42),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasPhoto ? 'Your profile photo' : 'Add a profile photo',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'This photo will appear on your generated web portfolio. We recommend a professionally taken photo.',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                key: const Key('chooseProfilePhotoButton'),
+                onPressed: _saving || _photoSaving ? null : _choosePhoto,
+                icon: _photoSaving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        hasPhoto ? Icons.refresh : Icons.add_a_photo_outlined,
+                      ),
+                label: Text(hasPhoto ? 'Replace photo' : 'Choose photo'),
+              ),
+              if (hasPhoto)
+                TextButton.icon(
+                  key: const Key('removeProfilePhotoButton'),
+                  onPressed: _saving || _photoSaving ? null : _removePhoto,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Remove photo'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'JPG, PNG, or WEBP, up to 5 MB.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _additionalLinkEditor(int index, _AdditionalLinkControllers link) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: TextFormField(
+                key: Key('profileAdditionalLinkLabel-$index'),
+                controller: link.label,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Label (optional)',
+                ),
+                validator: (value) => _validateAdditionalLinkLabel(value, link),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 3,
+              child: TextFormField(
+                key: Key('profileAdditionalLinkUrl-$index'),
+                controller: link.url,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: const InputDecoration(labelText: 'URL (optional)'),
+                validator: (value) => _validateAdditionalLinkUrl(value, link),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Remove additional link',
+              onPressed: () => setState(() {
+                final removed = _additionalLinks.removeAt(index);
+                removed.dispose();
+              }),
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+          ],
+        ),
+      );
+
+  Widget _sectionHeading(BuildContext context, String title) {
+    final icon = switch (title) {
+      'Profile photo' => Icons.photo_camera_outlined,
+      'About you' => Icons.person_outline,
+      'Contact details' => Icons.contact_mail_outlined,
+      'Education and training' => Icons.school_outlined,
+      _ => Icons.volunteer_activism_outlined,
+    };
+    return Row(
+      children: [
+        AppIconTile(
+          icon: icon,
+          size: 36,
+          iconSize: 18,
+          color: title == 'Education and training'
+              ? AppColors.teal
+              : AppColors.amber,
+          backgroundColor: title == 'Education and training'
+              ? AppColors.tealContainer
+              : AppColors.amberContainer,
+        ),
+        const SizedBox(width: 10),
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+      ],
+    );
+  }
 }
 
 class _ProfileData {
@@ -520,10 +1165,26 @@ class _ProfileData {
     required this.profile,
     required this.education,
     required this.experience,
+    this.photoUrl,
   });
   final ProfileBackground? profile;
   final List<EducationRecord> education;
   final List<ExperienceRecord> experience;
+  final String? photoUrl;
+}
+
+class _AdditionalLinkControllers {
+  _AdditionalLinkControllers([String labelText = '', String urlText = ''])
+    : label = TextEditingController(text: labelText),
+      url = TextEditingController(text: urlText);
+
+  final TextEditingController label;
+  final TextEditingController url;
+
+  void dispose() {
+    label.dispose();
+    url.dispose();
+  }
 }
 
 class _NoRecords extends StatelessWidget {
@@ -539,6 +1200,7 @@ class _NoRecords extends StatelessWidget {
 
 class _BackgroundRecordTile extends StatelessWidget {
   const _BackgroundRecordTile({
+    required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
@@ -547,6 +1209,7 @@ class _BackgroundRecordTile extends StatelessWidget {
   });
 
   final String title;
+  final IconData icon;
   final String subtitle;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -557,6 +1220,15 @@ class _BackgroundRecordTile extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 8),
     child: ListTile(
       onTap: onTap,
+      leading: AppIconTile(
+        icon: icon,
+        color: icon == Icons.school_outlined ? AppColors.teal : AppColors.amber,
+        backgroundColor: icon == Icons.school_outlined
+            ? AppColors.tealContainer
+            : AppColors.amberContainer,
+        size: 42,
+        iconSize: 20,
+      ),
       title: Text(title),
       subtitle: Text(subtitle),
       trailing: IconButton(
@@ -579,6 +1251,12 @@ class _ProfileLoadError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          const AppIconTile(
+            icon: Icons.cloud_off_outlined,
+            size: 54,
+            iconSize: 25,
+          ),
+          const SizedBox(height: 16),
           Text(
             'Profile details could not be loaded',
             style: Theme.of(context).textTheme.titleLarge,
@@ -932,3 +1610,110 @@ List<String> _splitList(String text) => text
     .where((value) => value.isNotEmpty)
     .toSet()
     .toList(growable: false);
+
+String? _validateOptionalEmail(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  return _normaliseEmail(text) == null ? 'Enter a valid email address' : null;
+}
+
+String? _validateOptionalPhone(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  return _normalisePhone(text) == null
+      ? 'Enter 7 to 15 digits, with an optional + country code'
+      : null;
+}
+
+String? _validateOptionalWhatsApp(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  return _normaliseWhatsAppNumber(text) == null
+      ? 'Enter a WhatsApp number with 7 to 15 digits'
+      : null;
+}
+
+String? _validateOptionalUrl(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  return _normaliseUrl(text) == null
+      ? 'Enter a valid http:// or https:// link'
+      : null;
+}
+
+String? _validateAdditionalLinkLabel(
+  String? value,
+  _AdditionalLinkControllers link,
+) {
+  if (link.url.text.trim().isNotEmpty && (value?.trim().isEmpty ?? true)) {
+    return 'Add a label for this link';
+  }
+  return null;
+}
+
+String? _validateAdditionalLinkUrl(
+  String? value,
+  _AdditionalLinkControllers link,
+) {
+  final text = value?.trim() ?? '';
+  if (link.label.text.trim().isNotEmpty && text.isEmpty) {
+    return 'Add a URL for this link';
+  }
+  if (text.isNotEmpty && _normaliseUrl(text) == null) {
+    return 'Enter a valid http:// or https:// link';
+  }
+  return null;
+}
+
+String? _normaliseEmail(String value) {
+  final email = value.trim().toLowerCase();
+  if (email.isEmpty) return null;
+  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email) ? email : null;
+}
+
+String? _normalisePhone(String value) {
+  final compact = value.trim().replaceAll(RegExp(r'[\s().-]'), '');
+  if (compact.isEmpty) return null;
+  return RegExp(r'^\+?[0-9]{7,15}$').hasMatch(compact) ? compact : null;
+}
+
+String? _normaliseWhatsAppNumber(String value) {
+  final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.isEmpty) return null;
+  return RegExp(r'^[0-9]{7,15}$').hasMatch(digits) ? digits : null;
+}
+
+String? _normaliseUrl(String value) {
+  var text = value.trim();
+  if (text.isEmpty) return null;
+  if (!text.contains('://')) text = 'https://$text';
+  final uri = Uri.tryParse(text);
+  if (uri == null ||
+      !(uri.scheme == 'http' || uri.scheme == 'https') ||
+      uri.host.isEmpty) {
+    return null;
+  }
+  return uri.toString();
+}
+
+extension on ProfileBackground {
+  ProfileBackground copyWithPhoto(String? photoPath) => ProfileBackground(
+    displayName: displayName,
+    username: username,
+    headline: headline,
+    bio: bio,
+    occupationCategory: occupationCategory,
+    occupationTitle: occupationTitle,
+    careerStage: careerStage,
+    interests: interests,
+    targetRoles: targetRoles,
+    photoPath: photoPath,
+    contactEmail: contactEmail,
+    phone: phone,
+    githubUrl: githubUrl,
+    linkedInUrl: linkedInUrl,
+    jobstreetUrl: jobstreetUrl,
+    whatsAppNumber: whatsAppNumber,
+    additionalLinks: additionalLinks,
+  );
+}

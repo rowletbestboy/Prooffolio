@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../../projects/data/project_repository.dart';
 import '../../projects/domain/project.dart';
 import '../data/skill_repository.dart';
@@ -81,6 +84,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(title: const Text('Skills')),
       floatingActionButton: FutureBuilder<List<Skill>>(
@@ -109,9 +113,11 @@ class _SkillsScreenState extends State<SkillsScreen> {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+              constraints: const BoxConstraints(
+                maxWidth: AppTheme.contentMaxWidth,
+              ),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 104),
+                padding: EdgeInsets.fromLTRB(pageGutter, 8, pageGutter, 104),
                 children: [
                   Text(
                     'A record of what you are learning and where you have used it.',
@@ -151,10 +157,12 @@ class _EmptySkillsState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.lightbulb_outline,
-                size: 36,
-                color: theme.colorScheme.primary,
+              const AppIconTile(
+                icon: Icons.lightbulb_outline,
+                color: AppColors.teal,
+                backgroundColor: AppColors.tealContainer,
+                size: 58,
+                iconSize: 28,
               ),
               const SizedBox(height: 20),
               Text('No skills yet', style: theme.textTheme.headlineSmall),
@@ -194,7 +202,7 @@ class _SelfReportedNote extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
         color: colors.secondaryContainer.withValues(alpha: .48),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,12 +244,19 @@ class _SkillListItem extends StatelessWidget {
         color: theme.colorScheme.surface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: theme.colorScheme.outlineVariant),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         ),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
           onTap: onTap,
-          contentPadding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+          contentPadding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+          leading: const AppIconTile(
+            icon: Icons.lightbulb_outline,
+            color: AppColors.teal,
+            backgroundColor: AppColors.tealContainer,
+            size: 44,
+            iconSize: 21,
+          ),
           title: Text(skill.name, style: theme.textTheme.titleMedium),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -318,6 +333,14 @@ class _SkillsLoadError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          const AppIconTile(
+            icon: Icons.lightbulb_outline,
+            color: AppColors.teal,
+            backgroundColor: AppColors.tealContainer,
+            size: 54,
+            iconSize: 26,
+          ),
+          const SizedBox(height: 16),
           Text(
             'Skills could not be loaded',
             style: Theme.of(context).textTheme.titleLarge,
@@ -398,16 +421,17 @@ class _SkillFormScreenState extends State<_SkillFormScreen> {
   Widget build(BuildContext context) {
     final editing = widget.skill != null;
     final theme = Theme.of(context);
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(title: Text(editing ? 'Edit skill' : 'Add skill')),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
+          constraints: const BoxConstraints(maxWidth: AppTheme.contentMaxWidth),
           child: Form(
             key: _formKey,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              padding: EdgeInsets.fromLTRB(pageGutter, 12, pageGutter, 32),
               children: [
                 Text(
                   'Describe the skill in your own words.',
