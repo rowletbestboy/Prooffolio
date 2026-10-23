@@ -11,8 +11,14 @@ import '../../projects/domain/project.dart';
 import '../../projects/presentation/projects_screen.dart';
 import '../../skills/domain/skill.dart';
 import '../../portfolio/data/portfolio_record_repository.dart';
+import '../../portfolio/data/portfolio_content_repository.dart';
+import '../../portfolio/data/portfolio_publication_repository.dart';
 import '../../portfolio/domain/portfolio_record.dart';
+import '../../portfolio/domain/resume_content.dart';
 import '../../portfolio/presentation/portfolio_records_screen.dart';
+import '../../portfolio/presentation/portfolio_preview_screen.dart';
+import '../../portfolio/presentation/resume_preview_screen.dart';
+import '../../portfolio/presentation/portfolio_site_preview.dart';
 import '../../evidence/data/evidence_repository.dart';
 import '../../evidence/domain/evidence.dart';
 import '../../evidence/presentation/evidence_library_screen.dart';
@@ -30,6 +36,8 @@ class HomeShell extends StatefulWidget {
     this.projectRepository,
     this.skillRepository,
     this.portfolioRecordRepository,
+    this.portfolioContentRepository,
+    this.portfolioPublicationRepository,
     this.evidenceRepository,
     this.evidenceFilePicker,
     this.profileRepository,
@@ -41,6 +49,8 @@ class HomeShell extends StatefulWidget {
   final ProjectRepository? projectRepository;
   final SkillRepository? skillRepository;
   final PortfolioRecordRepository? portfolioRecordRepository;
+  final PortfolioContentRepository? portfolioContentRepository;
+  final PortfolioPublicationRepository? portfolioPublicationRepository;
   final EvidenceRepository? evidenceRepository;
   final EvidenceFilePicker? evidenceFilePicker;
   final ProfileBackgroundRepository? profileRepository;

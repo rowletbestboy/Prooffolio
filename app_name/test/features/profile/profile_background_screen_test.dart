@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -173,12 +174,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.byKey(const Key('profileUpworkField')),
+      find.byKey(const Key('profileUpworkUrlField')),
       240,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.enterText(
-      find.byKey(const Key('profileUpworkField')),
+      find.byKey(const Key('profileUpworkUrlField')),
       'upwork.com/freelancers/~alex',
     );
     await tester.ensureVisible(find.text('Save profile'));
@@ -202,19 +203,19 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.byKey(const Key('profileUpworkField')),
+      find.byKey(const Key('profileUpworkUrlField')),
       240,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.enterText(
-      find.byKey(const Key('profileUpworkField')),
+      find.byKey(const Key('profileUpworkUrlField')),
       'https://example.com/freelancers/alex',
     );
     await tester.ensureVisible(find.text('Save profile'));
     await tester.tap(find.text('Save profile'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Enter a valid Upwork freelancer URL'), findsOneWidget);
+    expect(find.text('Enter a valid Upwork profile URL'), findsOneWidget);
     expect(repository.background.upworkUrl, isNull);
   });
 
@@ -618,6 +619,9 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
   );
   final List<EducationRecord> education = [];
   final List<ExperienceRecord> experience = [];
+  Completer<String>? photoUpload;
+  Completer<void>? backgroundSave;
+  int signedUrlRequests = 0;
   bool failBackgroundSave = false;
   int _nextId = 0;
 
@@ -627,6 +631,7 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
   @override
   Future<void> saveBackground(String userId, ProfileBackground value) async {
     if (failBackgroundSave) throw StateError('Save failed');
+    if (backgroundSave case final save?) await save.future;
     background = value;
   }
 
@@ -636,14 +641,19 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
     Uint8List bytes,
     String fileName,
     String contentType,
-  ) async => '$userId/$fileName';
+  ) async {
+    if (photoUpload case final upload?) return upload.future;
+    return '$userId/$fileName';
+  }
 
   @override
   Future<void> deleteProfilePhoto(String userId, String path) async {}
 
   @override
-  Future<String> createProfilePhotoSignedUrl(String path) async =>
-      'https://example.com/$path';
+  Future<String> createProfilePhotoSignedUrl(String path) async {
+    signedUrlRequests++;
+    return 'https://example.com/$path';
+  }
 
   @override
   Future<Uint8List> downloadProfilePhoto(String userId, String path) async =>

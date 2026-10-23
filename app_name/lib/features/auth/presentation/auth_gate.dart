@@ -13,6 +13,8 @@ import 'new_password_screen.dart';
 import '../../projects/data/project_repository.dart';
 import '../../skills/data/skill_repository.dart';
 import '../../portfolio/data/portfolio_record_repository.dart';
+import '../../portfolio/data/portfolio_content_repository.dart';
+import '../../portfolio/data/portfolio_publication_repository.dart';
 import '../../evidence/data/evidence_repository.dart';
 
 class AuthGate extends StatefulWidget {
@@ -132,12 +134,18 @@ class _AuthGateState extends State<AuthGate> {
         );
         return HomeShell(
           onSignOut: () => widget.client.auth.signOut(),
-          projectRepository: SupabaseProjectRepository(widget.client),
-          skillRepository: SupabaseSkillRepository(widget.client),
-          portfolioRecordRepository: SupabasePortfolioRecordRepository(
-            widget.client,
-          ),
-          evidenceRepository: SupabaseEvidenceRepository(widget.client),
+          projectRepository: projects,
+          skillRepository: skills,
+          portfolioRecordRepository: records,
+          evidenceRepository: evidence,
+          portfolioContentRepository: portfolioContentRepository,
+          portfolioPublicationRepository:
+              SupabasePortfolioPublicationRepository(
+                store: SupabasePortfolioPublicationStore(widget.client),
+                loadPrivateContent:
+                    portfolioContentRepository.loadPrivateContent,
+                publicBaseUrl: SupabaseConfig.portfolioPublicBaseUrl,
+              ),
           profileRepository: _profiles,
           profileUserId: user.id,
           profileAccountEmail: user.email,
