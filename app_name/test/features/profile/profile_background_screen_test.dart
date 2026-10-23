@@ -9,14 +9,225 @@ import 'package:app_name/features/profile/presentation/profile_background_screen
 import 'package:app_name/features/dashboard/presentation/home_shell.dart';
 
 void main() {
+  test('an unsupported MIME type is not inferred from a trusted extension', () {
+    final mimeType = ProfilePhotoPolicy.normaliseMimeType(
+      'application/pdf',
+      'renamed.jpg',
+    );
+
+    expect(mimeType, 'application/pdf');
+    expect(
+      ProfilePhotoPolicy.validate(
+        PickedProfilePhoto(
+          fileName: 'renamed.jpg',
+          mimeType: mimeType,
+          bytes: _tinyPng,
+        ),
+      ),
+      isNotNull,
+    );
+  });
+
+  test('MIME inference is used only when the platform omits the MIME type', () {
+    expect(
+      ProfilePhotoPolicy.normaliseMimeType(null, 'portrait.png'),
+      'image/png',
+    );
+    expect(
+      ProfilePhotoPolicy.validate(
+        PickedProfilePhoto(
+          fileName: 'portrait.png',
+          mimeType: 'image/png',
+          bytes: Uint8List.fromList([1, 2, 3]),
+        ),
+      ),
+      isNotNull,
+    );
+  });
+
+  testWidgets('profile save is disabled while a photo upload is in progress', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository()
+      ..photoUpload = Completer<String>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(
+          repository: repository,
+          userId: 'user-1',
+          photoPicker: _FakeProfilePhotoPicker(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('chooseProfilePhotoButton')));
+    await tester.pump();
+
+    final saveButton = tester.widget<FilledButton>(
+      find.byKey(const Key('saveProfileButton')),
+    );
+    try {
+      expect(saveButton.onPressed, isNull);
+    } finally {
+      repository.photoUpload!.complete('user-1/profile.png');
+      await tester.pump();
+    }
+  });
+
+  testWidgets('photo actions are disabled while profile save is in progress', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository()
+      ..backgroundSave = Completer<void>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(
+          repository: repository,
+          userId: 'user-1',
+          photoPicker: _FakeProfilePhotoPicker(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save profile'));
+    await tester.pump();
+
+    final chooseButton = tester.widget<OutlinedButton>(
+      find.byKey(const Key('chooseProfilePhotoButton')),
+    );
+    try {
+      expect(chooseButton.onPressed, isNull);
+    } finally {
+      repository.backgroundSave!.complete();
+      await tester.pump();
+    }
+  });
+
+  testWidgets('private profile photo URL is refreshed before it expires', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository()
+      ..background = const ProfileBackground(
+        displayName: 'Avery Student',
+        username: 'avery_student',
+        photoPath: 'user-1/profile.png',
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 90));
+    await tester.pump();
+
+    expect(repository.signedUrlRequests, greaterThanOrEqualTo(2));
+  });
+
+  testWidgets('saved contact email takes precedence over account email', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository()
+      ..background = const ProfileBackground(
+        displayName: 'Avery Student',
+        username: 'avery_student',
+        contactEmail: 'portfolio@example.com',
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(
+          repository: repository,
+          userId: 'user-1',
+          accountEmail: 'account@example.com',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileContactEmailField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('profileContactEmailField')),
+          )
+          .controller!
+          .text,
+      'portfolio@example.com',
+    );
+  });
+
+  testWidgets('profile editor saves the optional Upwork URL', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileUpworkField')),
+      'upwork.com/freelancers/~alex',
+    );
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.background.upworkUrl,
+      'https://upwork.com/freelancers/~alex',
+    );
+  });
+
+  testWidgets('profile editor rejects a URL outside Upwork', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileUpworkField')),
+      'https://example.com/freelancers/alex',
+    );
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter a valid Upwork freelancer URL'), findsOneWidget);
+    expect(repository.background.upworkUrl, isNull);
+  });
+
   testWidgets('profile action opens the background editor from Home', (
     WidgetTester tester,
   ) async {
+    final repository = _FakeProfileBackgroundRepository();
     await tester.pumpWidget(
       MaterialApp(
         home: HomeShell(
-          profileRepository: _FakeProfileBackgroundRepository(),
+          profileRepository: repository,
           profileUserId: 'user-1',
+          profileAccountEmail: 'avery@example.com',
         ),
       ),
     );
@@ -25,7 +236,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Profile and background'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('About you'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('About you'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileContactEmailField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(repository.background.contactEmail, isNull);
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.byKey(const Key('profileContactEmailField')),
+          )
+          .controller!
+          .text,
+      'avery@example.com',
+    );
   });
 
   testWidgets('profile can be saved without a degree or work history', (
@@ -38,6 +269,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileHeadlineField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
 
     await tester.enterText(
       find.byKey(const Key('profileHeadlineField')),

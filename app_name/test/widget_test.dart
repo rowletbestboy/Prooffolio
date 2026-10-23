@@ -199,7 +199,26 @@ void main() {
 
     await _tapDestination(tester, Icons.public_outlined);
     await tester.pumpAndSettle();
-    expect(find.text('Nothing public yet'), findsOneWidget);
+    expect(find.text('Your private portfolio'), findsOneWidget);
+    expect(find.text('Private preview'), findsOneWidget);
+    final portfolioIntro = find.text(
+      'Review how your saved work comes together. Nothing here is public unless you choose to publish it later.',
+    );
+    await tester.scrollUntilVisible(
+      portfolioIntro,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(portfolioIntro, findsOneWidget);
+    final savedWorkMessage = find.text(
+      'Your saved profile and work will appear here.',
+    );
+    await tester.scrollUntilVisible(
+      savedWorkMessage,
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(savedWorkMessage, findsOneWidget);
 
     await _tapDestination(tester, Icons.home_outlined);
     await tester.pumpAndSettle();

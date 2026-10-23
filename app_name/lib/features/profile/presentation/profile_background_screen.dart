@@ -695,6 +695,10 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+                    _sectionHeading(context, 'Profile photo'),
+                    const SizedBox(height: 12),
+                    _profilePhotoEditor(context),
+                    const SizedBox(height: 28),
                     _sectionHeading(context, 'About you'),
                     const SizedBox(height: 12),
                     TextFormField(

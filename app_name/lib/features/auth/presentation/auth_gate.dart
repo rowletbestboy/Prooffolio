@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/config/supabase_config.dart';
 import '../../dashboard/presentation/home_shell.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/presentation/profile_setup_screen.dart';
@@ -118,6 +119,17 @@ class _AuthGateState extends State<AuthGate> {
             onComplete: () => _refreshProfile(),
           );
         }
+        final projects = SupabaseProjectRepository(widget.client);
+        final skills = SupabaseSkillRepository(widget.client);
+        final records = SupabasePortfolioRecordRepository(widget.client);
+        final evidence = SupabaseEvidenceRepository(widget.client);
+        final portfolioContentRepository = PortfolioContentRepository(
+          profileRepository: _profiles,
+          projectRepository: projects,
+          skillRepository: skills,
+          portfolioRecordRepository: records,
+          evidenceRepository: evidence,
+        );
         return HomeShell(
           onSignOut: () => widget.client.auth.signOut(),
           projectRepository: SupabaseProjectRepository(widget.client),
@@ -128,6 +140,7 @@ class _AuthGateState extends State<AuthGate> {
           evidenceRepository: SupabaseEvidenceRepository(widget.client),
           profileRepository: _profiles,
           profileUserId: user.id,
+          profileAccountEmail: user.email,
         );
       },
     );

@@ -34,6 +34,7 @@ class HomeShell extends StatefulWidget {
     this.evidenceFilePicker,
     this.profileRepository,
     this.profileUserId,
+    this.profileAccountEmail,
   });
 
   final VoidCallback? onSignOut;
@@ -44,6 +45,7 @@ class HomeShell extends StatefulWidget {
   final EvidenceFilePicker? evidenceFilePicker;
   final ProfileBackgroundRepository? profileRepository;
   final String? profileUserId;
+  final String? profileAccountEmail;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -113,6 +115,7 @@ class _HomeShellState extends State<HomeShell> {
                   builder: (_) => ProfileBackgroundScreen(
                     repository: widget.profileRepository!,
                     userId: widget.profileUserId!,
+                    accountEmail: widget.profileAccountEmail,
                   ),
                 ),
               ),
@@ -150,17 +153,67 @@ class _HomeShellState extends State<HomeShell> {
           iconBackground: AppColors.indigoContainer,
           onSignOut: widget.onSignOut,
         ),
-      _EmptyDestinationPage(
-        icon: Icons.public_outlined,
-        title: 'Portfolio',
-        heading: 'Nothing public yet',
-        description:
-            'You will choose which projects, skills, and evidence visitors can see before publishing.',
-        nextStep:
-            'Build your project record first. Portfolio preview and sharing come after that.',
-        iconColor: AppColors.teal,
-        iconBackground: AppColors.tealContainer,
-        onSignOut: widget.onSignOut,
+      PortfolioPreviewScreen(
+        repository: widget.portfolioContentRepository,
+        userId: widget.profileUserId,
+        onEditProfile: () {
+          if (widget.profileRepository == null ||
+              widget.profileUserId == null) {
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ProfileBackgroundScreen(
+                repository: widget.profileRepository!,
+                userId: widget.profileUserId!,
+                accountEmail: widget.profileAccountEmail,
+              ),
+            ),
+          );
+        },
+        onOpenProjects: () => _selectDestination(1),
+        onOpenSkills: () => _selectDestination(2),
+        onOpenRecord: (type) async {
+          final repository = widget.portfolioRecordRepository;
+          if (repository == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PortfolioRecordsScreen(
+                repository: repository,
+                initialType: type,
+              ),
+            ),
+          );
+        },
+        onOpenEvidence: () async {
+          final repository = widget.evidenceRepository;
+          if (repository == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EvidenceLibraryScreen(
+                repository: repository,
+                filePicker:
+                    widget.evidenceFilePicker ?? PlatformEvidenceFilePicker(),
+              ),
+            ),
+          );
+        },
+        onBuildSite: (content) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PortfolioSitePreview(
+              content: content,
+              userId: widget.profileUserId,
+              publicationRepository: widget.portfolioPublicationRepository,
+            ),
+          ),
+        ),
+        onBuildResume: (content) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ResumePreviewScreen(
+              content: ResumeContent.fromPortfolioContent(content),
+            ),
+          ),
+        ),
       ),
     ];
 
