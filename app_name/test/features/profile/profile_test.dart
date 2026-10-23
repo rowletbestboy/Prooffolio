@@ -44,6 +44,20 @@ void main() {
     },
   );
 
+  test('Upwork profile URL round-trips through the private profile row', () {
+    const profile = ProfileBackground(
+      displayName: 'Alex Rivera',
+      username: 'alex',
+      upworkUrl: 'https://www.upwork.com/freelancers/~alex',
+    );
+
+    final fields = profile.toDatabaseFields();
+    final restored = ProfileBackground.fromJson(fields);
+
+    expect(fields['upwork_url'], 'https://www.upwork.com/freelancers/~alex');
+    expect(restored.upworkUrl, 'https://www.upwork.com/freelancers/~alex');
+  });
+
   test('current volunteer experience permits no organization or end date', () {
     const draft = ExperienceDraft(
       title: 'Community garden coordinator',

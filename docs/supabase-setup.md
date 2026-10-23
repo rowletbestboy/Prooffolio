@@ -41,6 +41,21 @@ Uploaded files remain in a private bucket and are opened through signed links th
 
 To add optional profile photo and contact fields, run `app_name/supabase/migrations/20261026100000_expand_profile_portfolio_contacts.sql` after the Evidence migration. It adds private contact columns and labeled links to `profiles`, plus the private `profile-photos` Storage bucket. Apply migrations in order: profiles, projects, skills, inclusive profile and skills expansion, portfolio records, Evidence, then profile portfolio contacts. The photo bucket accepts JPEG, PNG, and WEBP files up to 5 MB, and its object policies limit each signed-in user to their own folder. Profile photos remain private until a later publication flow creates a separately selected public copy.
 
+To enable opt-in website publishing, apply `app_name/supabase/migrations/20261027100000_create_portfolio_publications.sql` after the profile photo/contact migration. This creates the owner-only publication status table, a public `published-portfolios` Storage bucket for generated website files, and owner-scoped Storage write policies. If this migration has already been applied, do not run it again. Review the SQL and its public-bucket behavior before applying it; published site files are accessible to anyone with the URL.
+
+To add a dedicated Upwork freelancer link, run `app_name/supabase/migrations/20261028100000_add_upwork_profile_link.sql` after the profile photo and contact migration. This later additive migration adds an optional field to the existing owner-private profile row. It can be applied after the publication migration and is needed before saving an Upwork URL. It is not added to public portfolios unless the user selects it during website review.
+
+Set `PORTFOLIO_PUBLIC_BASE_URL` to the public object base URL for that bucket when running the app, for example `https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/published-portfolios`. Live publishing is disabled if this value is missing or is not an HTTPS URL. Add the define to the run command:
+
+```powershell
+flutter run `
+  --dart-define=SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co `
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY `
+  --dart-define=PORTFOLIO_PUBLIC_BASE_URL=https://YOUR_PROJECT_REF.supabase.co/storage/v1/object/public/published-portfolios
+```
+
+The app uploads only the content explicitly selected in the preview and asks for confirmation before publishing, updating, or unpublishing. Unpublishing removes the website files and deactivates the publication record, but copies or cached content outside Prooffolio may remain. Storage uses a short cache lifetime; it does not guarantee that third-party caches are purged. Do not put service-role keys in the Flutter app.
+
 To check whether the table exists, run `select to_regclass('public.profiles');` in SQL Editor. The result should be `profiles`. If you need to rerun the migration, open the file in the project and copy the whole file into a new query before pressing **Run**.
 
 From PowerShell, in the `app_name` directory, run:

@@ -138,6 +138,7 @@ class ProfileBackground {
     this.phone,
     this.githubUrl,
     this.linkedInUrl,
+    this.upworkUrl,
     this.jobstreetUrl,
     this.whatsAppNumber,
     this.additionalLinks = const [],
@@ -157,6 +158,7 @@ class ProfileBackground {
   final String? phone;
   final String? githubUrl;
   final String? linkedInUrl;
+  final String? upworkUrl;
   final String? jobstreetUrl;
   final String? whatsAppNumber;
   final List<ProfileContactLink> additionalLinks;
@@ -176,6 +178,7 @@ class ProfileBackground {
     'phone': _nullableText(phone ?? ''),
     'github_url': _nullableText(githubUrl ?? ''),
     'linkedin_url': _nullableText(linkedInUrl ?? ''),
+    'upwork_url': _nullableText(upworkUrl ?? ''),
     'jobstreet_url': _nullableText(jobstreetUrl ?? ''),
     'whatsapp_number': _nullableText(whatsAppNumber ?? ''),
     'additional_links': additionalLinks
@@ -201,6 +204,7 @@ class ProfileBackground {
         phone: json['phone'] as String?,
         githubUrl: json['github_url'] as String?,
         linkedInUrl: json['linkedin_url'] as String?,
+        upworkUrl: json['upwork_url'] as String?,
         jobstreetUrl: json['jobstreet_url'] as String?,
         whatsAppNumber: json['whatsapp_number'] as String?,
         additionalLinks: _readProfileContactLinks(json['additional_links']),
@@ -374,9 +378,7 @@ List<ProfileContactLink> _readProfileContactLinks(dynamic value) {
   return value
       .whereType<Map>()
       .map(
-        (item) => ProfileContactLink.fromJson(
-          Map<String, dynamic>.from(item),
-        ),
+        (item) => ProfileContactLink.fromJson(Map<String, dynamic>.from(item)),
       )
       .toList(growable: false);
 }

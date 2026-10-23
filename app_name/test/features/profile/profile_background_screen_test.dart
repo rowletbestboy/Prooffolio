@@ -163,6 +163,62 @@ void main() {
     );
   });
 
+  testWidgets('profile editor saves the optional Upwork URL', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileUpworkField')),
+      'upwork.com/freelancers/~alex',
+    );
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.background.upworkUrl,
+      'https://upwork.com/freelancers/~alex',
+    );
+  });
+
+  testWidgets('profile editor rejects a URL outside Upwork', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileUpworkField')),
+      'https://example.com/freelancers/alex',
+    );
+    await tester.ensureVisible(find.text('Save profile'));
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter a valid Upwork freelancer URL'), findsOneWidget);
+    expect(repository.background.upworkUrl, isNull);
+  });
+
   testWidgets('profile action opens the background editor from Home', (
     WidgetTester tester,
   ) async {
@@ -411,6 +467,10 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
     signedUrlRequests++;
     return 'https://example.com/$path?request=$signedUrlRequests';
   }
+
+  @override
+  Future<Uint8List> downloadProfilePhoto(String userId, String path) async =>
+      Uint8List(0);
 
   @override
   Future<List<EducationRecord>> listEducation(String userId) async =>

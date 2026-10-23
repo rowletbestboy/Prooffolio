@@ -44,10 +44,10 @@
 - `ProfileBackground.toDatabaseFields()` and `fromJson()` round-trip all new values.
 - Extend `ProfileBackgroundRepository` with `uploadProfilePhoto(String userId, Uint8List bytes, String fileName, String contentType) -> Future<String>`, `deleteProfilePhoto(String userId, String path) -> Future<void>`, and `createProfilePhotoSignedUrl(String path) -> Future<String>`.
 
-- [ ] Add nullable profile columns for contact values and JSONB labeled links; keep existing RLS unchanged and add a private `profile-photos` bucket with per-user object policies and MIME/size restrictions.
-- [ ] Implement repository read/write and private bucket upload/removal, using owner-scoped paths and preserving the current image if a replacement fails.
-- [ ] Document migration order after Evidence and explain that profile photos remain private until a published copy is created.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Add nullable profile columns for contact values and JSONB labeled links; keep existing RLS unchanged and add a private `profile-photos` bucket with per-user object policies and MIME/size restrictions.
+- [x] Implement repository read/write and private bucket upload/removal, using owner-scoped paths and preserving the current image if a replacement fails.
+- [x] Document migration order after Evidence and explain that profile photos remain private until a published copy is created.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ### Task 2: Add photo and contact editing UI
 
@@ -60,10 +60,10 @@
 - Add optional `ProfilePhotoPicker` interface returning selected filename, MIME type, and bytes; production adapter uses the existing `file_picker` dependency.
 - Profile form saves contact fields through the profile repository; all remain optional.
 
-- [ ] Add photo picker, preview, remove/replace actions, and the specified professional-photo disclaimer explaining that the image will appear on the web portfolio.
-- [ ] Add email, phone, GitHub, LinkedIn, JobStreet, WhatsApp, and repeatable labeled-link fields with validation/normalization and visible optional labels.
-- [ ] Handle cancellation, invalid type/size, network failure, and success without discarding other unsaved form values.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Add photo picker, preview, remove/replace actions, and the specified professional-photo disclaimer explaining that the image will appear on the web portfolio.
+- [x] Add email, phone, GitHub, LinkedIn, JobStreet, WhatsApp, and repeatable labeled-link fields with validation/normalization and visible optional labels.
+- [x] Handle cancellation, invalid type/size, network failure, and success without discarding other unsaved form values.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ## Phase 2 — Private portfolio preview and advisory meter
 
@@ -80,10 +80,10 @@
 - `PortfolioContentRepository.loadPrivateContent(String userId)` composes profile and existing repositories; sources that fail independently expose unavailable state instead of synthetic values.
 - `PortfolioReadiness.evaluate(PortfolioContent)` returns `List<ReadinessSuggestion>`; each item has `label`, `explanation`, `isCovered`, and `destination`. It must not assign an employability grade.
 
-- [ ] Compose content from existing repositories, omitting blank fields and isolating source failures.
-- [ ] Implement deterministic advisory criteria and explanations for profile basics, project detail, skills, evidence, and contact options.
-- [ ] Replace the Portfolio placeholder with a private, scrollable preview, readiness summary, and direct links to edit/add relevant inputs.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Compose content from existing repositories, omitting blank fields and isolating source failures.
+- [x] Implement deterministic advisory criteria and explanations for profile basics, project detail, skills, evidence, and contact options.
+- [x] Replace the Portfolio placeholder with a private, scrollable preview, readiness summary, and direct links to edit/add relevant inputs.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ## Phase 3 — Web templates, download, and publishing
 
@@ -101,11 +101,11 @@
 - `PortfolioSiteGenerator.generate(PortfolioContent content, PortfolioSelection selection, PortfolioTemplate template) -> PortfolioSiteBundle`.
 - `PortfolioSelection` contains `includePhoto`, per-channel contact booleans, and selected sets of project, skill, education, experience, certification, and achievement IDs. IDs are used only in the authenticated app and are stripped from generated output. Evidence remains private and is never bundled.
 
-- [ ] Build two distinct responsive templates from the same selected content, with no external runtime dependencies.
-- [ ] Escape all user text and allow only HTTP/HTTPS URLs in generated anchors; never inject user HTML/JavaScript.
-- [ ] Add an in-app live preview that renders the selected generated page, and actions to switch light/dark variants.
-- [ ] Package and download the generated files as one ZIP bundle using the app's supported file-download flow.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Build two distinct responsive templates from the same selected content, with no external runtime dependencies.
+- [x] Escape all user text and allow only HTTP/HTTPS URLs in generated anchors; never inject user HTML/JavaScript.
+- [x] Add an in-app live preview that renders the selected generated page, and actions to switch light/dark variants.
+- [x] Package and download the generated files as one ZIP bundle using the app's supported file-download flow.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ### Task 5: Store publication snapshots and publish/unpublish
 
@@ -120,14 +120,14 @@
 - A private publication row stores owner ID, unique username slug, active state, selected content snapshot, template, and publish timestamps. It contains only selected fields/records and no private evidence object paths.
 - `PORTFOLIO_PUBLIC_BASE_URL` points to a dedicated public `published-portfolios` Storage bucket; public URLs follow `<base>/<username>/index.html`.
 
-- [ ] Add an owner-only publication table and a dedicated public Storage bucket containing only generated static website files. Keep existing private table and Evidence bucket policies unchanged. The bucket is intentionally public for reads; inserts/deletes must be limited by RLS to the signed-in owner's username folder.
-- [ ] Implement publish/update as an authenticated repository flow: reload records as the owner, validate selection and link protocols, generate the approved snapshot with the shared safe generator, upload only that bundle to `<username>/`, then save the private publication state. Roll back partial uploads if the state save fails.
-- [ ] Implement unpublish by deleting only the owner's website files and deactivating the private publication row. Never copy Evidence objects; copy the profile photo into the public site bundle only when selected.
-- [ ] If a user attempts to change their username while a publication is active, explain that they must unpublish first; this prevents a stale public username URL.
-- [ ] Set short cache lifetimes on generated objects and delete every object in the user's published folder on unpublish; explain that copies or cached versions outside Prooffolio may persist.
-- [ ] Add explicit public-content review, off-by-default contact selections, stable URL display/copy, update snapshot action, and unpublish confirmation.
-- [ ] Document the migration, public bucket behavior, and `PORTFOLIO_PUBLIC_BASE_URL` configuration; state that a configured public base URL is required before live publication can work. No service-role key is needed in Flutter.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Add an owner-only publication table and a dedicated public Storage bucket containing only generated static website files. Keep existing private table and Evidence bucket policies unchanged. The bucket is intentionally public for reads; inserts/deletes must be limited by RLS to the signed-in owner's username folder.
+- [x] Implement publish/update as an authenticated repository flow: reload records as the owner, validate selection and link protocols, generate the approved snapshot with the shared safe generator, upload only that bundle to `<username>/`, then save the private publication state. Roll back partial uploads if the state save fails.
+- [x] Implement unpublish by deleting only the owner's website files and deactivating the private publication row. Never copy Evidence objects; copy the profile photo into the public site bundle only when selected.
+- [x] If a user attempts to change their username while a publication is active, explain that they must unpublish first; this prevents a stale public username URL.
+- [x] Set short cache lifetimes on generated objects and delete every object in the user's published folder on unpublish; explain that copies or cached versions outside Prooffolio may persist.
+- [x] Add explicit public-content review, off-by-default contact selections, stable URL display/copy, update snapshot action, and unpublish confirmation.
+- [x] Document the migration, public bucket behavior, and `PORTFOLIO_PUBLIC_BASE_URL` configuration; state that a configured public base URL is required before live publication can work. No service-role key is needed in Flutter.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ## Phase 4 — Resume/CV generator and exports
 
@@ -142,9 +142,9 @@
 - `ResumeContent.fromPortfolioContent(PortfolioContent)` produces standard sections: contact, summary, experience, education, skills, projects, credentials, and achievements.
 - Empty optional sections are omitted; no data is synthesized.
 
-- [ ] Add a text-first, one-column resume preview at the bottom of Portfolio, with standard headings and chronological dates.
-- [ ] Add copy explaining “ATS-friendly format” and why no universal ATS approval is claimed.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Add a text-first, one-column resume preview at the bottom of Portfolio, with standard headings and chronological dates.
+- [x] Add copy explaining “ATS-friendly format” and why no universal ATS approval is claimed.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ### Task 7: Export PDF and DOCX files
 
@@ -157,15 +157,14 @@
 - `ResumeExporter.toPdf(ResumeContent) -> Future<Uint8List>` and `toDocx(ResumeContent) -> Future<Uint8List>`.
 - Use the `pdf` package for selectable-text PDF and `docx_dart` for standard DOCX paragraphs/headings; use a platform-appropriate save/download mechanism without changing resume content between formats.
 
-- [ ] Implement multi-page PDF with text flow, standard fonts, and no image-rendered text or decorative tables.
-- [ ] Implement DOCX with Word heading styles, paragraphs, and lists only; omit empty optional sections.
-- [ ] Add PDF and DOCX export actions with filenames based on the display name, sanitized for filesystem use.
-- [ ] Run `dart analyze` from `app_name`; expected: no issues.
+- [x] Implement multi-page PDF with text flow, standard fonts, and no image-rendered text or decorative tables.
+- [x] Implement DOCX with Word heading styles, paragraphs, and lists only; omit empty optional sections.
+- [x] Add PDF and DOCX export actions with filenames based on the display name, sanitized for filesystem use.
+- [x] Run `dart analyze` from `app_name`; expected: no issues.
 
 ## Final review
 
 - [ ] Walk through the four phases in order using a real signed-in account and the configured Supabase project.
 - [ ] Confirm anonymous publication access returns only the selected snapshot and is unavailable after unpublish.
 - [ ] Inspect downloaded website ZIP, PDF, and DOCX outputs for missing sections, unsafe markup, exposed private data, and selectable text.
-- [ ] Run `dart analyze` from `app_name` and `git diff --check` from the repository root; resolve all reported issues.
-
+- [x] Run `dart analyze` from `app_name` and `git diff --check` from the repository root; resolve all reported issues.

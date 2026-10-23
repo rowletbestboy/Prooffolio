@@ -143,6 +143,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
   final _phone = TextEditingController();
   final _githubUrl = TextEditingController();
   final _linkedInUrl = TextEditingController();
+  final _upworkUrl = TextEditingController();
   final _jobstreetUrl = TextEditingController();
   final _whatsAppNumber = TextEditingController();
   final List<_AdditionalLinkControllers> _additionalLinks = [];
@@ -179,6 +180,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
     _phone.dispose();
     _githubUrl.dispose();
     _linkedInUrl.dispose();
+    _upworkUrl.dispose();
     _jobstreetUrl.dispose();
     _whatsAppNumber.dispose();
     for (final link in _additionalLinks) {
@@ -259,6 +261,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
     _phone.text = profile.phone ?? '';
     _githubUrl.text = profile.githubUrl ?? '';
     _linkedInUrl.text = profile.linkedInUrl ?? '';
+    _upworkUrl.text = profile.upworkUrl ?? '';
     _jobstreetUrl.text = profile.jobstreetUrl ?? '';
     _whatsAppNumber.text = profile.whatsAppNumber ?? '';
     _additionalLinks.addAll(
@@ -315,6 +318,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
         phone: _normalisePhone(_phone.text),
         githubUrl: _normaliseUrl(_githubUrl.text),
         linkedInUrl: _normaliseUrl(_linkedInUrl.text),
+        upworkUrl: _normaliseUpworkUrl(_upworkUrl.text),
         jobstreetUrl: _normaliseUrl(_jobstreetUrl.text),
         whatsAppNumber: _normaliseWhatsAppNumber(_whatsAppNumber.text),
         additionalLinks: _additionalLinks
@@ -785,6 +789,18 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                         hintText: 'linkedin.com/in/your-name',
                       ),
                       validator: _validateOptionalUrl,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('profileUpworkField'),
+                      controller: _upworkUrl,
+                      keyboardType: TextInputType.url,
+                      autocorrect: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Upwork freelancer URL (optional)',
+                        hintText: 'upwork.com/freelancers/your-name',
+                      ),
+                      validator: _validateOptionalUpworkUrl,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -1641,6 +1657,14 @@ String? _validateOptionalUrl(String? value) {
       : null;
 }
 
+String? _validateOptionalUpworkUrl(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) return null;
+  return _normaliseUpworkUrl(text) == null
+      ? 'Enter a valid Upwork freelancer URL'
+      : null;
+}
+
 String? _validateAdditionalLinkLabel(
   String? value,
   _AdditionalLinkControllers link,
@@ -1696,6 +1720,16 @@ String? _normaliseUrl(String value) {
   return uri.toString();
 }
 
+String? _normaliseUpworkUrl(String value) {
+  final normalized = _normaliseUrl(value);
+  if (normalized == null) return null;
+  final uri = Uri.parse(normalized);
+  final isUpworkHost =
+      uri.host == 'upwork.com' || uri.host.endsWith('.upwork.com');
+  if (!isUpworkHost || !uri.path.startsWith('/freelancers/')) return null;
+  return uri.replace(scheme: 'https').toString();
+}
+
 extension on ProfileBackground {
   ProfileBackground copyWithPhoto(String? photoPath) => ProfileBackground(
     displayName: displayName,
@@ -1712,6 +1746,7 @@ extension on ProfileBackground {
     phone: phone,
     githubUrl: githubUrl,
     linkedInUrl: linkedInUrl,
+    upworkUrl: upworkUrl,
     jobstreetUrl: jobstreetUrl,
     whatsAppNumber: whatsAppNumber,
     additionalLinks: additionalLinks,

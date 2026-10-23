@@ -56,6 +56,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         setState(() {
           _error = switch (error.code) {
             '23505' => 'That username is already in use. Try another.',
+            'P0001' =>
+              'Unpublish your portfolio before changing your username.',
             '42P01' || 'PGRST205' =>
               'The profiles table is missing. Run the profiles migration in your Supabase SQL Editor, then try again.',
             '23514' =>

@@ -39,6 +39,7 @@ abstract interface class ProfileBackgroundRepository {
   );
   Future<void> deleteProfilePhoto(String userId, String path);
   Future<String> createProfilePhotoSignedUrl(String path);
+  Future<Uint8List> downloadProfilePhoto(String userId, String path);
 }
 
 class SupabaseProfileRepository
@@ -229,10 +230,21 @@ class SupabaseProfileRepository
   }
 
   @override
-  Future<String> createProfilePhotoSignedUrl(String path) async =>
-      await _client.storage
-          .from('profile-photos')
-          .createSignedUrl(path, const Duration(minutes: 2).inSeconds);
+  Future<String> createProfilePhotoSignedUrl(String path) async => await _client
+      .storage
+      .from('profile-photos')
+      .createSignedUrl(path, const Duration(minutes: 2).inSeconds);
+
+  @override
+  Future<Uint8List> downloadProfilePhoto(String userId, String path) async {
+    _requireCurrentUser(userId);
+    if (!path.startsWith('$userId/')) {
+      throw const AuthException(
+        'You can only download your own profile photo.',
+      );
+    }
+    return _client.storage.from('profile-photos').download(path);
+  }
 
   void _requireCurrentUser(String userId) {
     if (_client.auth.currentUser?.id != userId) {

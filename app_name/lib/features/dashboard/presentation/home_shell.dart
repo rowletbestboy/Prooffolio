@@ -9,8 +9,14 @@ import '../../projects/domain/project.dart';
 import '../../projects/presentation/projects_screen.dart';
 import '../../skills/domain/skill.dart';
 import '../../portfolio/data/portfolio_record_repository.dart';
+import '../../portfolio/data/portfolio_content_repository.dart';
+import '../../portfolio/data/portfolio_publication_repository.dart';
 import '../../portfolio/domain/portfolio_record.dart';
 import '../../portfolio/presentation/portfolio_records_screen.dart';
+import '../../portfolio/presentation/portfolio_preview_screen.dart';
+import '../../portfolio/domain/resume_content.dart';
+import '../../portfolio/presentation/resume_preview_screen.dart';
+import '../../portfolio/presentation/portfolio_site_preview.dart';
 import '../../evidence/data/evidence_repository.dart';
 import '../../evidence/domain/evidence.dart';
 import '../../evidence/presentation/evidence_library_screen.dart';
@@ -26,6 +32,8 @@ class HomeShell extends StatefulWidget {
     this.projectRepository,
     this.skillRepository,
     this.portfolioRecordRepository,
+    this.portfolioContentRepository,
+    this.portfolioPublicationRepository,
     this.evidenceRepository,
     this.evidenceFilePicker,
     this.profileRepository,
@@ -37,6 +45,8 @@ class HomeShell extends StatefulWidget {
   final ProjectRepository? projectRepository;
   final SkillRepository? skillRepository;
   final PortfolioRecordRepository? portfolioRecordRepository;
+  final PortfolioContentRepository? portfolioContentRepository;
+  final PortfolioPublicationRepository? portfolioPublicationRepository;
   final EvidenceRepository? evidenceRepository;
   final EvidenceFilePicker? evidenceFilePicker;
   final ProfileBackgroundRepository? profileRepository;
@@ -147,17 +157,67 @@ class _HomeShellState extends State<HomeShell> {
           iconBackground: AppColors.indigoContainer,
           onSignOut: widget.onSignOut,
         ),
-      _EmptyDestinationPage(
-        icon: Icons.public_outlined,
-        title: 'Portfolio',
-        heading: 'Nothing public yet',
-        description:
-            'You will choose which projects, skills, and evidence visitors can see before publishing.',
-        nextStep:
-            'Build your project record first. Portfolio preview and sharing come after that.',
-        iconColor: AppColors.teal,
-        iconBackground: AppColors.tealContainer,
-        onSignOut: widget.onSignOut,
+      PortfolioPreviewScreen(
+        repository: widget.portfolioContentRepository,
+        userId: widget.profileUserId,
+        onEditProfile: () {
+          if (widget.profileRepository == null ||
+              widget.profileUserId == null) {
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ProfileBackgroundScreen(
+                repository: widget.profileRepository!,
+                userId: widget.profileUserId!,
+                accountEmail: widget.profileAccountEmail,
+              ),
+            ),
+          );
+        },
+        onOpenProjects: () => _selectDestination(1),
+        onOpenSkills: () => _selectDestination(2),
+        onOpenRecord: (type) async {
+          final repository = widget.portfolioRecordRepository;
+          if (repository == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PortfolioRecordsScreen(
+                repository: repository,
+                initialType: type,
+              ),
+            ),
+          );
+        },
+        onOpenEvidence: () async {
+          final repository = widget.evidenceRepository;
+          if (repository == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EvidenceLibraryScreen(
+                repository: repository,
+                filePicker:
+                    widget.evidenceFilePicker ?? PlatformEvidenceFilePicker(),
+              ),
+            ),
+          );
+        },
+        onBuildSite: (content) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PortfolioSitePreview(
+              content: content,
+              userId: widget.profileUserId,
+              publicationRepository: widget.portfolioPublicationRepository,
+            ),
+          ),
+        ),
+        onBuildResume: (content) => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ResumePreviewScreen(
+              content: ResumeContent.fromPortfolioContent(content),
+            ),
+          ),
+        ),
       ),
     ];
 
@@ -306,7 +366,9 @@ class _HomePageState extends State<_HomePage> {
   }
 
   void _reloadCounts() {
-    setState(() => _countsFuture = _loadCounts());
+    setState(() {
+      _countsFuture = _loadCounts();
+    });
   }
 
   Future<void> _openAndRefresh(Future<void> Function()? action) async {
