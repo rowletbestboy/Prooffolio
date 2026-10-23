@@ -33,6 +33,16 @@ To add inclusive profile details and broad occupation categories, run `app_name/
 
 To add certifications and achievements, run `app_name/supabase/migrations/20261024100000_create_portfolio_records.sql` after the previous migration. It creates one private, owner-only record table for certifications and achievements. Both can be added without a project; certification expiration dates are optional. Public portfolios and file attachments are not enabled yet, so these records remain private.
 
+To add the shared Evidence library, run `app_name/supabase/migrations/20261025100000_create_evidence.sql` after the portfolio-record migration. It creates private evidence metadata and owner-checked links to projects, skills, experience, certifications, and achievements. It also creates the private `evidence` Storage bucket and per-user object policies. Apply migrations in order: profiles, projects, skills, inclusive profile and skills expansion, portfolio records, then evidence. See [the Evidence schema](evidence-schema.md) for the relationship diagram and ownership behavior.
+
+To add private portfolio profile contacts and photos, run `app_name/supabase/migrations/20261026100000_expand_profile_portfolio_contacts.sql` after Evidence and before the portfolio-publication migration. It adds optional contact/social fields and a private `profile-photos` bucket. The profile photo remains private until a user explicitly selects it for a portfolio or photo resume.
+
+To enable live portfolio publishing, run `app_name/supabase/migrations/20261027100000_create_portfolio_publications.sql` after the profile contact/photo migration. The user reports this publication migration has already been run in their Supabase project; do not rerun it automatically. Finally, run `app_name/supabase/migrations/20261028100000_add_upwork_profile_link.sql` to add the optional Upwork profile URL. Keep these migrations in order: profile contacts/photos, portfolio publications, then Upwork.
+
+The Evidence client and bucket default to a 50 MB maximum (50,000,000 bytes). Supabase's project-wide Storage limit must be at least that high. If the project's limit is lower, reduce `EvidenceFilePolicy.maxFileBytes` in `app_name/lib/features/evidence/domain/evidence.dart` and both `50000000` limits in the evidence migration to the same byte value before applying it; the app's size label updates from the Dart constant. The allowed file types are JPG/JPEG, PNG, WEBP, PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT, RTF, CSV, MP4, MOV, WEBM, MP3, M4A, WAV, and OGG. The client checks extension, reported MIME type, and file size, and Storage enforces the bucket MIME and size restrictions as well.
+
+Uploaded files remain in a private bucket and are opened through signed links that expire after two minutes. Deleting file evidence removes the Storage object through the Storage API before deleting its metadata; if Storage removal fails, the evidence row remains so deletion can be retried. Public evidence sharing is not enabled.
+
 To check whether the table exists, run `select to_regclass('public.profiles');` in SQL Editor. The result should be `profiles`. If you need to rerun the migration, open the file in the project and copy the whole file into a new query before pressing **Run**.
 
 From PowerShell, in the `app_name` directory, run:
@@ -63,3 +73,5 @@ Tell me once the project exists. You may then provide the **Project URL** and **
 - [Supabase API keys and client key safety](https://supabase.com/docs/guides/getting-started/api-keys)
 - [Supabase native mobile deep linking](https://supabase.com/docs/guides/auth/native-mobile-deep-linking?platform=flutter)
 - [Supabase redirect URL configuration](https://supabase.com/docs/guides/auth/redirect-urls)
+- [Supabase Storage bucket restrictions](https://supabase.com/docs/guides/storage/buckets/creating-buckets)
+- [Supabase Storage file size limits](https://supabase.com/docs/guides/storage/uploads/file-limits)

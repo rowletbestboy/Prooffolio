@@ -12,6 +12,7 @@ import 'new_password_screen.dart';
 import '../../projects/data/project_repository.dart';
 import '../../skills/data/skill_repository.dart';
 import '../../portfolio/data/portfolio_record_repository.dart';
+import '../../evidence/data/evidence_repository.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key, required this.client});
@@ -124,6 +125,7 @@ class _AuthGateState extends State<AuthGate> {
           portfolioRecordRepository: SupabasePortfolioRecordRepository(
             widget.client,
           ),
+          evidenceRepository: SupabaseEvidenceRepository(widget.client),
           profileRepository: _profiles,
           profileUserId: user.id,
         );

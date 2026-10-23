@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_mark.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../data/profile_repository.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -90,6 +94,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Set up your profile'),
@@ -105,66 +110,92 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
+            constraints: const BoxConstraints(
+              maxWidth: AppTheme.contentMaxWidth,
+            ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.fromLTRB(pageGutter, 20, pageGutter, 32),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Make it yours', style: textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Choose how your work will be credited. You can update these details later.',
-                      style: textTheme.bodyLarge,
-                    ),
+                    const AppBrandMark(),
                     const SizedBox(height: 28),
-                    TextFormField(
-                      controller: _displayNameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'Display name',
-                      ),
-                      validator: (value) => (value?.trim().isNotEmpty ?? false)
-                          ? null
-                          : 'Enter your display name',
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _usernameController,
-                      autocorrect: false,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixText: '@',
-                        helperText: 'Letters, numbers, and underscores',
-                      ),
-                      validator: (value) {
-                        final username = value?.trim() ?? '';
-                        if (username.length < 3 || username.length > 24) {
-                          return 'Use 3 to 24 characters';
-                        }
-                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
-                          return 'Use letters, numbers, and underscores only';
-                        }
-                        return null;
-                      },
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    SizedBox(
+                    Container(
                       width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: Text(_saving ? 'Saving…' : 'Continue'),
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: AppColors.lightSlate),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AppIconTile(
+                            icon: Icons.person_outline,
+                            color: AppColors.indigo,
+                          ),
+                          const SizedBox(height: 18),
+                          Text('Make it yours', style: textTheme.headlineSmall),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Choose how your work will be credited. You can update these details later.',
+                            style: textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            controller: _displayNameController,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'Display name',
+                            ),
+                            validator: (value) =>
+                                (value?.trim().isNotEmpty ?? false)
+                                ? null
+                                : 'Enter your display name',
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _usernameController,
+                            autocorrect: false,
+                            decoration: const InputDecoration(
+                              labelText: 'Username',
+                              prefixText: '@',
+                              helperText: 'Letters, numbers, and underscores',
+                            ),
+                            validator: (value) {
+                              final username = value?.trim() ?? '';
+                              if (username.length < 3 || username.length > 24) {
+                                return 'Use 3 to 24 characters';
+                              }
+                              if (!RegExp(
+                                r'^[a-zA-Z0-9_]+$',
+                              ).hasMatch(username)) {
+                                return 'Use letters, numbers, and underscores only';
+                              }
+                              return null;
+                            },
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              _error!,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _saving ? null : _save,
+                              child: Text(_saving ? 'Saving…' : 'Continue'),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

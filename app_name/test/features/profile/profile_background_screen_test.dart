@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_name/features/profile/data/profile_repository.dart';
@@ -46,6 +49,242 @@ void main() {
     expect(repository.background.headline, 'Growing community gardens');
     expect(repository.education, isEmpty);
     expect(repository.experience, isEmpty);
+    expect(find.text('Profile saved'), findsOneWidget);
+  });
+
+  testWidgets('profile explains photo privacy and exposes contact inputs', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(
+          repository: _FakeProfileBackgroundRepository(),
+          userId: 'user-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text(
+        'This is the photo used in your portfolio and photo resume. '
+        'It stays private until you choose to include it.',
+      ),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.text(
+        'This is the photo used in your portfolio and photo resume. '
+        'It stays private until you choose to include it.',
+      ),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Contact details'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byKey(const Key('profileContactEmailField')), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkUrlField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byKey(const Key('profileUpworkUrlField')), findsOneWidget);
+  });
+
+  testWidgets('profile photo is uploaded to the private profile path', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(
+          repository: repository,
+          userId: 'user-1',
+          photoPicker: _FakeProfilePhotoPicker(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('chooseProfilePhotoButton')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    await tester.tap(find.byKey(const Key('chooseProfilePhotoButton')));
+    await tester.pumpAndSettle();
+
+    expect(repository.background.photoPath, 'user-1/profile.png');
+    expect(find.text('Profile photo saved'), findsOneWidget);
+  });
+
+  testWidgets('contact save preserves saved background fields', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository()
+      ..background = const ProfileBackground(
+        displayName: 'Avery Student',
+        username: 'avery_student',
+        headline: 'Community educator',
+        bio: 'I build accessible learning programs.',
+        occupationCategory: OccupationCategory.education,
+        occupationTitle: 'Program facilitator',
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileContactEmailField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileContactEmailField')),
+      'avery@example.com',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkUrlField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileUpworkUrlField')),
+      'www.upwork.com/freelancers/~avery',
+    );
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(repository.background.contactEmail, 'avery@example.com');
+    expect(
+      repository.background.upworkUrl,
+      'https://www.upwork.com/freelancers/~avery',
+    );
+    expect(repository.background.headline, 'Community educator');
+    expect(repository.background.bio, 'I build accessible learning programs.');
+    expect(
+      repository.background.occupationCategory,
+      OccupationCategory.education,
+    );
+    expect(repository.background.occupationTitle, 'Program facilitator');
+  });
+
+  testWidgets('unsafe Upwork URL is not saved', (WidgetTester tester) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileUpworkUrlField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileUpworkUrlField')),
+      'javascript:alert(1)',
+    );
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(repository.background.upworkUrl, isNull);
+    expect(find.text('Enter a valid Upwork profile URL'), findsOneWidget);
+  });
+
+  testWidgets('users can save a labeled custom profile link', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Add another link'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Add another link'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('profileAdditionalLinkLabel-0')),
+      'Writing',
+    );
+    await tester.enterText(
+      find.byKey(const Key('profileAdditionalLinkUrl-0')),
+      'example.com/writing',
+    );
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(repository.background.additionalLinks.single.label, 'Writing');
+    expect(
+      repository.background.additionalLinks.single.url,
+      'https://example.com/writing',
+    );
+  });
+
+  testWidgets('education entry requires a title before it can be saved', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Add education'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Add education'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save education'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter a course or qualification'), findsOneWidget);
+    expect(repository.education, isEmpty);
+
+    await tester.enterText(
+      find.byKey(const Key('educationTitleField')),
+      'Community horticulture course',
+    );
+    await tester.tap(find.text('Save education'));
+    await tester.pumpAndSettle();
+
+    expect(repository.education.single.title, 'Community horticulture course');
+  });
+
+  testWidgets('profile save failure is visible to the user', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProfileBackgroundRepository()
+      ..failBackgroundSave = true;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileBackgroundScreen(repository: repository, userId: 'user-1'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Profile could not be saved. Try again.'), findsOneWidget);
   });
 
   testWidgets(
@@ -143,6 +382,7 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
   );
   final List<EducationRecord> education = [];
   final List<ExperienceRecord> experience = [];
+  bool failBackgroundSave = false;
   int _nextId = 0;
 
   @override
@@ -150,8 +390,28 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
 
   @override
   Future<void> saveBackground(String userId, ProfileBackground value) async {
+    if (failBackgroundSave) throw StateError('Save failed');
     background = value;
   }
+
+  @override
+  Future<String> uploadProfilePhoto(
+    String userId,
+    Uint8List bytes,
+    String fileName,
+    String contentType,
+  ) async => '$userId/$fileName';
+
+  @override
+  Future<void> deleteProfilePhoto(String userId, String path) async {}
+
+  @override
+  Future<String> createProfilePhotoSignedUrl(String path) async =>
+      'https://example.com/$path';
+
+  @override
+  Future<Uint8List> downloadProfilePhoto(String userId, String path) async =>
+      Uint8List(0);
 
   @override
   Future<List<EducationRecord>> listEducation(String userId) async =>
@@ -221,3 +481,16 @@ class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
     experience.removeWhere((item) => item.id == id);
   }
 }
+
+class _FakeProfilePhotoPicker implements ProfilePhotoPicker {
+  @override
+  Future<PickedProfilePhoto?> pickPhoto() async => PickedProfilePhoto(
+    fileName: 'profile.png',
+    mimeType: 'image/png',
+    bytes: _tinyPng,
+  );
+}
+
+final Uint8List _tinyPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5QAAAABJRU5ErkJggg==',
+);

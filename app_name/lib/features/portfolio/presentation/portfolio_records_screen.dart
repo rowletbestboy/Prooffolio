@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../data/portfolio_record_repository.dart';
 import '../domain/portfolio_record.dart';
 
 class PortfolioRecordsScreen extends StatefulWidget {
-  const PortfolioRecordsScreen({super.key, required this.repository});
+  const PortfolioRecordsScreen({
+    super.key,
+    required this.repository,
+    this.initialType = PortfolioRecordType.certification,
+  });
 
   final PortfolioRecordRepository repository;
+  final PortfolioRecordType initialType;
 
   @override
   State<PortfolioRecordsScreen> createState() => _PortfolioRecordsScreenState();
 }
 
 class _PortfolioRecordsScreenState extends State<PortfolioRecordsScreen> {
-  PortfolioRecordType _type = PortfolioRecordType.certification;
+  late PortfolioRecordType _type;
   List<PortfolioRecord> _records = [];
   bool _loading = true;
   Object? _loadError;
@@ -22,6 +30,7 @@ class _PortfolioRecordsScreenState extends State<PortfolioRecordsScreen> {
   @override
   void initState() {
     super.initState();
+    _type = widget.initialType;
     _loadRecords();
   }
 
@@ -126,6 +135,7 @@ class _PortfolioRecordsScreenState extends State<PortfolioRecordsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(title: const Text('Certifications and achievements')),
       floatingActionButton: FloatingActionButton.extended(
@@ -136,9 +146,9 @@ class _PortfolioRecordsScreenState extends State<PortfolioRecordsScreen> {
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: AppTheme.contentMaxWidth),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 104),
+            padding: EdgeInsets.fromLTRB(pageGutter, 12, pageGutter, 104),
             children: [
               Text(
                 'Recognition and learning',
@@ -151,6 +161,7 @@ class _PortfolioRecordsScreenState extends State<PortfolioRecordsScreen> {
               ),
               const SizedBox(height: 20),
               SegmentedButton<PortfolioRecordType>(
+                showSelectedIcon: false,
                 segments: [
                   for (final type in PortfolioRecordType.values)
                     ButtonSegment(value: type, label: Text(type.label)),
@@ -203,12 +214,18 @@ class _PortfolioRecordsEmpty extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 48, 8, 24),
       child: Column(
         children: [
-          Icon(
-            type == PortfolioRecordType.certification
+          AppIconTile(
+            icon: type == PortfolioRecordType.certification
                 ? Icons.workspace_premium_outlined
                 : Icons.emoji_events_outlined,
-            size: 40,
-            color: Theme.of(context).colorScheme.primary,
+            color: type == PortfolioRecordType.certification
+                ? AppColors.indigo
+                : AppColors.amber,
+            backgroundColor: type == PortfolioRecordType.certification
+                ? AppColors.indigoContainer
+                : AppColors.amberContainer,
+            size: 58,
+            iconSize: 28,
           ),
           const SizedBox(height: 16),
           Text(
@@ -255,10 +272,19 @@ class _PortfolioRecordTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         onTap: onTap,
-        leading: Icon(
-          record.recordType == PortfolioRecordType.certification
+        leading: AppIconTile(
+          icon: record.recordType == PortfolioRecordType.certification
               ? Icons.workspace_premium_outlined
               : Icons.emoji_events_outlined,
+          color: record.recordType == PortfolioRecordType.certification
+              ? AppColors.indigo
+              : AppColors.amber,
+          backgroundColor:
+              record.recordType == PortfolioRecordType.certification
+              ? AppColors.indigoContainer
+              : AppColors.amberContainer,
+          size: 44,
+          iconSize: 21,
         ),
         title: Text(record.title),
         subtitle: Padding(
@@ -376,7 +402,7 @@ class _PortfolioRecordEditorState extends State<_PortfolioRecordEditor> {
     return AlertDialog(
       title: Text(widget.initial == null ? 'Add $kind' : 'Edit $kind'),
       content: SizedBox(
-        width: 460,
+        width: MediaQuery.sizeOf(context).width < 600 ? double.infinity : 460,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(

@@ -1,3 +1,6 @@
+import 'dart:math';
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/profile.dart';
@@ -28,6 +31,15 @@ abstract interface class ProfileBackgroundRepository {
     String? id,
   });
   Future<void> deleteExperience(String userId, String id);
+  Future<String> uploadProfilePhoto(
+    String userId,
+    Uint8List bytes,
+    String fileName,
+    String contentType,
+  );
+  Future<void> deleteProfilePhoto(String userId, String path);
+  Future<String> createProfilePhotoSignedUrl(String path);
+  Future<Uint8List> downloadProfilePhoto(String userId, String path);
 }
 
 class SupabaseProfileRepository
@@ -133,8 +145,9 @@ class SupabaseProfileRepository
         .eq('user_id', userId)
         .eq('id', id)
         .select('id');
-    if (rows.isEmpty)
+    if (rows.isEmpty) {
       throw StateError('Education record could not be deleted.');
+    }
   }
 
   @override
@@ -183,7 +196,88 @@ class SupabaseProfileRepository
         .eq('user_id', userId)
         .eq('id', id)
         .select('id');
-    if (rows.isEmpty)
+    if (rows.isEmpty) {
       throw StateError('Experience record could not be deleted.');
+    }
+  }
+
+  @override
+  Future<String> uploadProfilePhoto(
+    String userId,
+    Uint8List bytes,
+    String fileName,
+    String contentType,
+  ) async {
+    _requireCurrentUser(userId);
+    if (bytes.isEmpty || bytes.lengthInBytes > 5000000) {
+      throw ArgumentError.value(
+        bytes.lengthInBytes,
+        'bytes',
+        'Invalid photo size.',
+      );
+    }
+    if (!_profilePhotoTypes.contains(contentType)) {
+      throw ArgumentError.value(
+        contentType,
+        'contentType',
+        'Unsupported photo type.',
+      );
+    }
+    final extension = switch (contentType) {
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      _ => throw ArgumentError.value(contentType, 'contentType'),
+    };
+    final randomName = List.generate(
+      32,
+      (_) => Random.secure().nextInt(16).toRadixString(16),
+    ).join();
+    final path = '$userId/$randomName.$extension';
+    await _client.storage
+        .from('profile-photos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    return path;
+  }
+
+  @override
+  Future<void> deleteProfilePhoto(String userId, String path) async {
+    _requireOwnedPhotoPath(userId, path);
+    await _client.storage.from('profile-photos').remove([path]);
+  }
+
+  @override
+  Future<String> createProfilePhotoSignedUrl(String path) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Please sign in again.');
+    _requireOwnedPhotoPath(userId, path);
+    return _client.storage
+        .from('profile-photos')
+        .createSignedUrl(path, const Duration(minutes: 2).inSeconds);
+  }
+
+  @override
+  Future<Uint8List> downloadProfilePhoto(String userId, String path) async {
+    _requireOwnedPhotoPath(userId, path);
+    return _client.storage.from('profile-photos').download(path);
+  }
+
+  void _requireCurrentUser(String userId) {
+    if (_client.auth.currentUser?.id != userId) {
+      throw const AuthException('Please sign in again.');
+    }
+  }
+
+  void _requireOwnedPhotoPath(String userId, String path) {
+    _requireCurrentUser(userId);
+    if (!path.startsWith('$userId/')) {
+      throw const AuthException('You can only access your own profile photo.');
+    }
   }
 }
+
+const _profilePhotoTypes = {'image/jpeg', 'image/png', 'image/webp'};

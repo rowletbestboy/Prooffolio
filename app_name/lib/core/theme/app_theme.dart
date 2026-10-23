@@ -3,6 +3,17 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 abstract final class AppTheme {
+  static const double pageGutter = 24;
+  static const double contentMaxWidth = 720;
+  static const double cardRadius = 20;
+  static const double controlRadius = 15;
+
+  static double pageGutterFor(double viewportWidth) => switch (viewportWidth) {
+    < 360 => 16,
+    < 600 => 20,
+    _ => pageGutter,
+  };
+
   static final ThemeData light = _buildLightTheme();
 
   static ThemeData _buildLightTheme() {
@@ -19,8 +30,10 @@ abstract final class AppTheme {
           onSecondary: AppColors.white,
           secondaryContainer: AppColors.tealContainer,
           onSecondaryContainer: AppColors.deepNavy,
-          tertiary: AppColors.deepNavy,
+          tertiary: AppColors.amber,
           onTertiary: AppColors.white,
+          tertiaryContainer: AppColors.amberContainer,
+          onTertiaryContainer: AppColors.deepNavy,
           error: AppColors.error,
           onError: AppColors.white,
           errorContainer: AppColors.errorContainer,
@@ -108,12 +121,11 @@ abstract final class AppTheme {
       ),
     );
 
-    const radius = 14.0;
     final roundedShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(radius),
+      borderRadius: BorderRadius.circular(controlRadius),
     );
     final outlinedShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(radius),
+      borderRadius: BorderRadius.circular(cardRadius),
       side: const BorderSide(color: AppColors.lightSlate),
     );
 
@@ -144,32 +156,49 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         shape: outlinedShape,
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surfaceSubtle,
+        selectedColor: AppColors.indigoContainer,
+        side: const BorderSide(color: AppColors.lightSlate),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        labelStyle: const TextStyle(
+          color: AppColors.slateBlack,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          color: AppColors.deepNavy,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: AppColors.surfaceSubtle,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+          horizontal: 18,
+          vertical: 17,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: const BorderSide(color: AppColors.lightSlate),
+          borderRadius: BorderRadius.circular(controlRadius),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
+          borderRadius: BorderRadius.circular(controlRadius),
           borderSide: const BorderSide(color: AppColors.lightSlate),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: const BorderSide(color: AppColors.indigo, width: 1.5),
+          borderRadius: BorderRadius.circular(controlRadius),
+          borderSide: const BorderSide(color: AppColors.indigo, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: const BorderSide(color: AppColors.error),
+          borderRadius: BorderRadius.circular(controlRadius),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+          borderRadius: BorderRadius.circular(controlRadius),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -199,8 +228,38 @@ abstract final class AppTheme {
           ),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: const WidgetStatePropertyAll(Size(48, 48)),
+          shape: WidgetStatePropertyAll(roundedShape),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: const TextStyle(
+          color: AppColors.deepNavy,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+        contentTextStyle: const TextStyle(
+          color: AppColors.slateGray,
+          fontSize: 15,
+          height: 1.5,
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.indigoBright,
+        foregroundColor: AppColors.white,
+        elevation: 2,
+        highlightElevation: 3,
+      ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 72,
+        height: 78,
         backgroundColor: AppColors.white,
         surfaceTintColor: Colors.transparent,
         indicatorColor: AppColors.indigoContainer,

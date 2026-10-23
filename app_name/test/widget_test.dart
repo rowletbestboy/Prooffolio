@@ -28,9 +28,12 @@ void main() {
       MaterialApp(home: AuthScreen(authService: authService)),
     );
 
-    await tester.tap(find.text('Create account'));
+    await _tapVisible(tester, find.text('New to Prooffolio? Create account'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await _tapVisible(
+      tester,
+      find.widgetWithText(FilledButton, 'Create account'),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Enter a valid email address'), findsOneWidget);
@@ -52,7 +55,7 @@ void main() {
       MaterialApp(home: AuthScreen(authService: authService)),
     );
 
-    await tester.tap(find.text('Create account'));
+    await _tapVisible(tester, find.text('New to Prooffolio? Create account'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('emailField')), 'a@b.com');
     await tester.enterText(
@@ -63,7 +66,10 @@ void main() {
       find.byKey(const Key('confirmPasswordField')),
       'good-pass-123',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await _tapVisible(
+      tester,
+      find.widgetWithText(FilledButton, 'Create account'),
+    );
     await tester.pumpAndSettle();
 
     expect(authService.signUpCalls, 1);
@@ -148,13 +154,16 @@ void main() {
     expect(updateCalls, 0);
   });
 
-  testWidgets('Prooffolio starts on the evidence-focused Home destination', (
+  testWidgets('Prooffolio starts on the progress Home destination', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
 
-    expect(find.text('Your work, connected to proof.'), findsOneWidget);
-    expect(find.text('Add your first project'), findsOneWidget);
+    expect(find.text('Your progress'), findsOneWidget);
+    expect(
+      find.text('Build a clear picture of your work, one piece at a time.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('bottom navigation opens all four first-run destinations', (
@@ -162,10 +171,23 @@ void main() {
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
 
-    expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Projects'), findsOneWidget);
-    expect(find.text('Skills'), findsOneWidget);
-    expect(find.text('Portfolio'), findsOneWidget);
+    final navigation = find.byType(NavigationBar);
+    expect(
+      find.descendant(of: navigation, matching: find.text('Home')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: navigation, matching: find.text('Projects')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: navigation, matching: find.text('Skills')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: navigation, matching: find.text('Portfolio')),
+      findsOneWidget,
+    );
 
     await _tapDestination(tester, Icons.folder_outlined);
     await tester.pumpAndSettle();
@@ -181,7 +203,7 @@ void main() {
 
     await _tapDestination(tester, Icons.home_outlined);
     await tester.pumpAndSettle();
-    expect(find.text('Your work, connected to proof.'), findsOneWidget);
+    expect(find.text('Your progress'), findsOneWidget);
   });
 }
 
@@ -235,4 +257,9 @@ Future<void> _tapDestination(WidgetTester tester, IconData icon) async {
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.tap(finder);
 }

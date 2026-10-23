@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_icon_tile.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 import 'project_detail_screen.dart';
@@ -53,6 +55,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: AppBar(title: const Text('Projects')),
       floatingActionButton: FutureBuilder<List<Project>>(
@@ -82,9 +85,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+              constraints: const BoxConstraints(
+                maxWidth: AppTheme.contentMaxWidth,
+              ),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
+                padding: EdgeInsets.fromLTRB(pageGutter, 8, pageGutter, 96),
                 children: [
                   Text(
                     'A record of what you made and what you contributed.',
@@ -125,10 +130,10 @@ class _EmptyProjectsState extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.folder_open_outlined,
-                size: 36,
-                color: theme.colorScheme.primary,
+              const AppIconTile(
+                icon: Icons.folder_open_outlined,
+                size: 58,
+                iconSize: 28,
               ),
               const SizedBox(height: 20),
               Text('No projects yet', style: theme.textTheme.headlineSmall),
@@ -172,6 +177,12 @@ class _ProjectLoadError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const AppIconTile(
+              icon: Icons.cloud_off_outlined,
+              size: 54,
+              iconSize: 25,
+            ),
+            const SizedBox(height: 16),
             Text(
               'Projects could not be loaded',
               style: theme.textTheme.titleLarge,
@@ -207,7 +218,7 @@ class _ProjectListTile extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(
@@ -216,6 +227,12 @@ class _ProjectListTile extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const AppIconTile(
+                    icon: Icons.work_outline,
+                    size: 44,
+                    iconSize: 21,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       project.title,
@@ -244,7 +261,16 @@ class _ProjectListTile extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              Text('Draft · Open project', style: theme.textTheme.labelMedium),
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 15),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Private draft · Open project',
+                    style: theme.textTheme.labelMedium,
+                  ),
+                ],
+              ),
             ],
           ),
         ),

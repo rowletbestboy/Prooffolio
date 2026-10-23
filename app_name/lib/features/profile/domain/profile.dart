@@ -133,6 +133,15 @@ class ProfileBackground {
     this.careerStage,
     this.interests = const [],
     this.targetRoles = const [],
+    this.photoPath,
+    this.contactEmail,
+    this.phone,
+    this.githubUrl,
+    this.linkedInUrl,
+    this.upworkUrl,
+    this.jobstreetUrl,
+    this.whatsAppNumber,
+    this.additionalLinks = const [],
   });
 
   final String displayName;
@@ -144,6 +153,15 @@ class ProfileBackground {
   final CareerStage? careerStage;
   final List<String> interests;
   final List<String> targetRoles;
+  final String? photoPath;
+  final String? contactEmail;
+  final String? phone;
+  final String? githubUrl;
+  final String? linkedInUrl;
+  final String? upworkUrl;
+  final String? jobstreetUrl;
+  final String? whatsAppNumber;
+  final List<ProfileContactLink> additionalLinks;
 
   Map<String, dynamic> toDatabaseFields() => {
     'display_name': displayName.trim(),
@@ -155,6 +173,17 @@ class ProfileBackground {
     'career_stage': careerStage?.databaseValue,
     'interests': _cleanList(interests),
     'target_roles': _cleanList(targetRoles),
+    'photo_path': _nullableText(photoPath ?? ''),
+    'contact_email': _nullableText(contactEmail ?? ''),
+    'phone': _nullableText(phone ?? ''),
+    'github_url': _nullableText(githubUrl ?? ''),
+    'linkedin_url': _nullableText(linkedInUrl ?? ''),
+    'upwork_url': _nullableText(upworkUrl ?? ''),
+    'jobstreet_url': _nullableText(jobstreetUrl ?? ''),
+    'whatsapp_number': _nullableText(whatsAppNumber ?? ''),
+    'additional_links': additionalLinks
+        .map((link) => link.toDatabaseFields())
+        .toList(growable: false),
   };
 
   factory ProfileBackground.fromJson(Map<String, dynamic> json) =>
@@ -170,6 +199,33 @@ class ProfileBackground {
         careerStage: CareerStage.fromDatabase(json['career_stage'] as String?),
         interests: _readList(json['interests']),
         targetRoles: _readList(json['target_roles']),
+        photoPath: json['photo_path'] as String?,
+        contactEmail: json['contact_email'] as String?,
+        phone: json['phone'] as String?,
+        githubUrl: json['github_url'] as String?,
+        linkedInUrl: json['linkedin_url'] as String?,
+        upworkUrl: json['upwork_url'] as String?,
+        jobstreetUrl: json['jobstreet_url'] as String?,
+        whatsAppNumber: json['whatsapp_number'] as String?,
+        additionalLinks: _readProfileContactLinks(json['additional_links']),
+      );
+}
+
+class ProfileContactLink {
+  const ProfileContactLink({required this.label, required this.url});
+
+  final String label;
+  final String url;
+
+  Map<String, String> toDatabaseFields() => {
+    'label': label.trim(),
+    'url': url.trim(),
+  };
+
+  factory ProfileContactLink.fromJson(Map<String, dynamic> json) =>
+      ProfileContactLink(
+        label: json['label'] as String? ?? '',
+        url: json['url'] as String? ?? '',
       );
 }
 
@@ -316,6 +372,19 @@ List<String> _cleanList(List<String> values) => values
 List<String> _readList(dynamic value) => value is List
     ? value.map((item) => item.toString()).toList(growable: false)
     : const [];
+
+List<ProfileContactLink> _readProfileContactLinks(dynamic value) {
+  if (value is! List) return const [];
+  return value
+      .whereType<Map>()
+      .map(
+        (item) => ProfileContactLink.fromJson(Map<String, dynamic>.from(item)),
+      )
+      .where(
+        (link) => link.label.trim().isNotEmpty && link.url.trim().isNotEmpty,
+      )
+      .toList(growable: false);
+}
 
 String? _dateOnly(DateTime? date) => date == null
     ? null
