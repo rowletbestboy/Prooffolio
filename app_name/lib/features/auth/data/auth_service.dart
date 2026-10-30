@@ -50,7 +50,7 @@ class SupabaseAuthService implements AuthService {
         'display_name': displayName.trim(),
         'username': username.trim().toLowerCase(),
       },
-      emailRedirectTo: 'com.prooffolio.app_name://login-callback/',
+      emailRedirectTo: 'com.prooffolio.app://login-callback/',
     );
     return AuthActionResult(
       emailConfirmationRequired: response.session == null,
@@ -61,7 +61,7 @@ class SupabaseAuthService implements AuthService {
   Future<void> resetPassword({required String email}) async {
     await _client.auth.resetPasswordForEmail(
       email,
-      redirectTo: 'com.prooffolio.app_name://login-callback/',
+      redirectTo: 'com.prooffolio.app://login-callback/',
     );
   }
 }

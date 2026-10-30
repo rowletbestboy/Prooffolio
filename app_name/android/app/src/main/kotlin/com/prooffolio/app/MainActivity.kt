@@ -1,4 +1,4 @@
-package com.prooffolio.app_name
+package com.prooffolio.app
 
 import io.flutter.embedding.android.FlutterActivity
 

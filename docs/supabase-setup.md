@@ -17,7 +17,7 @@ The publishable key is designed for mobile clients and is safe to ship with a pr
 2. Enable email/password sign-in.
 3. Keep email confirmation enabled for production. For development, either confirm each test account or temporarily disable confirmation in the project dashboard. When confirmation is enabled, account creation can succeed without immediately creating an active session.
 4. In **Authentication ? URL Configuration**, set the Site URL to a real web URL you control when available. For local development, use the project's default URL if the dashboard requires a value.
-5. Add the mobile callback URL to **Redirect URLs**: `com.prooffolio.app_name://login-callback/`. This matches the current Android application ID. Keep that ID stable after publishing.
+5. Add the mobile callback URL to **Redirect URLs**: `com.prooffolio.app://login-callback/`. This matches the current Android application ID. Keep that ID stable after publishing.
 
 Supabase email confirmation and password recovery links need a configured redirect destination. The Android app has a matching deep-link intent filter; confirmation and recovery callbacks use the URI above.
 
