@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('incomplete profile reminder opens the profile editor', (
+  testWidgets('incomplete profile reminder opens the profile overview', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(800, 900);
@@ -32,7 +32,8 @@ void main() {
     await tester.tap(find.text('Open profile'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Profile and background'), findsOneWidget);
+    expect(find.text('Profile'), findsOneWidget);
+    expect(find.text('About you'), findsOneWidget);
   });
 
   testWidgets('complete saved details show a completed state', (

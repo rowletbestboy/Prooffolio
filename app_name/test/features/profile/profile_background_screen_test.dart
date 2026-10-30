@@ -257,46 +257,52 @@ void main() {
     expect(repository.background.upworkUrl, isNull);
   });
 
-  testWidgets('profile action opens the background editor from Home', (
-    WidgetTester tester,
-  ) async {
-    final repository = _FakeProfileBackgroundRepository();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: HomeShell(
-          profileRepository: repository,
-          profileUserId: 'user-1',
-          profileAccountEmail: 'avery@example.com',
+  testWidgets(
+    'Home profile opens the overview and its Edit action opens editor',
+    (WidgetTester tester) async {
+      final repository = _FakeProfileBackgroundRepository();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeShell(
+            profileRepository: repository,
+            profileUserId: 'user-1',
+            profileAccountEmail: 'avery@example.com',
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.byTooltip('Profile and background'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Profile and background'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Profile and background'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('About you'),
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('About you'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('profileContactEmailField')),
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(repository.background.contactEmail, isNull);
-    expect(
-      tester
-          .widget<TextFormField>(
-            find.byKey(const Key('profileContactEmailField')),
-          )
-          .controller!
-          .text,
-      'avery@example.com',
-    );
-  });
+      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('About you'), findsOneWidget);
+      await tester.tap(find.text('Edit').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Profile and background'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('About you'),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('About you'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('profileContactEmailField')),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(repository.background.contactEmail, isNull);
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const Key('profileContactEmailField')),
+            )
+            .controller!
+            .text,
+        'avery@example.com',
+      );
+    },
+  );
 
   testWidgets('profile can be saved without a degree or work history', (
     WidgetTester tester,

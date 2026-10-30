@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_page_app_bar.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_select_field.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 
@@ -307,20 +308,18 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   ),
                 ],
                 const SizedBox(height: 16),
-                DropdownButtonFormField<ProjectStatus>(
-                  initialValue: _status,
-                  decoration: const InputDecoration(
-                    labelText: 'Project status',
-                  ),
+                AppSelectField<ProjectStatus>(
+                  key: const Key('projectStatusField'),
+                  value: _status,
+                  label: 'Project status',
                   items: ProjectStatus.values.map((status) {
-                    return DropdownMenuItem(
+                    return DropdownMenuItem<ProjectStatus>(
                       value: status,
                       child: Text(_statusLabel(status)),
                     );
                   }).toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _status = value);
-                  },
+                  onChanged: (value) =>
+                      setState(() => _status = value ?? _status),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

@@ -89,7 +89,13 @@ class _PortfolioPreviewScreenState extends State<PortfolioPreviewScreen> {
             onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 32),
+              padding: EdgeInsets.fromLTRB(
+                gutter,
+                16,
+                gutter,
+                AppTheme.floatingNavigationContentInset +
+                    MediaQuery.viewPaddingOf(context).bottom,
+              ),
               children: [
                 _PortfolioPageHeader(
                   onBack:

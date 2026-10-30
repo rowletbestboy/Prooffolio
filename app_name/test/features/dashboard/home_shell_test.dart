@@ -69,7 +69,9 @@ void main() {
     ];
     expect(
       metricCenters.map((center) => center.dy).reduce((a, b) => a > b ? a : b) -
-          metricCenters.map((center) => center.dy).reduce((a, b) => a < b ? a : b),
+          metricCenters
+              .map((center) => center.dy)
+              .reduce((a, b) => a < b ? a : b),
       lessThan(1),
     );
 
@@ -80,19 +82,180 @@ void main() {
         'Generate Resume',
         'Portfolio',
       ])
-          tester.getCenter(
-            find.ancestor(
-              of: find.text(label).first,
-              matching: find.byType(Card),
-            ).first,
-          ),
+        tester.getCenter(
+          find
+              .ancestor(of: find.text(label).first, matching: find.byType(Card))
+              .first,
+        ),
     ];
     expect(
-      shortcutCenters.map((center) => center.dy).reduce((a, b) => a > b ? a : b) -
-          shortcutCenters.map((center) => center.dy).reduce((a, b) => a < b ? a : b),
+      shortcutCenters
+              .map((center) => center.dy)
+              .reduce((a, b) => a > b ? a : b) -
+          shortcutCenters
+              .map((center) => center.dy)
+              .reduce((a, b) => a < b ? a : b),
       lessThan(1),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Profile shows saved background and Settings can log out', (
+    tester,
+  ) async {
+    var signOutCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          onSignOut: () async {
+            signOutCalls++;
+          },
+          profileRepository: _ProfileRepository(
+            profile: const ProfileBackground(
+              displayName: 'Alex Rivera',
+              username: 'alex',
+              headline: 'Product designer',
+              bio: 'I build accessible products.',
+              contactEmail: 'alex@example.test',
+              phone: '+63 912 345 6789',
+            ),
+            education: [
+              EducationRecord(
+                id: 'education-1',
+                userId: 'user-1',
+                title: 'BS Computer Science',
+                institution: 'Mapúa University',
+                level: EducationLevel.bachelor,
+                status: EducationStatus.completed,
+                startDate: DateTime(2021),
+                endDate: DateTime(2025),
+                createdAt: DateTime.utc(2025),
+                updatedAt: DateTime.utc(2025),
+              ),
+            ],
+            experience: [
+              ExperienceRecord(
+                id: 'experience-1',
+                userId: 'user-1',
+                title: 'UX Intern',
+                organization: 'Accessible Labs',
+                type: ExperienceType.internship,
+                startDate: DateTime(2024),
+                endDate: DateTime(2024),
+                createdAt: DateTime.utc(2024),
+                updatedAt: DateTime.utc(2024),
+              ),
+            ],
+          ),
+          profileUserId: 'user-1',
+          profileAccountEmail: 'alex@example.test',
+          projectRepository: _ProjectRepository([]),
+          skillRepository: _SkillRepository([_skill('Flutter')]),
+          portfolioRecordRepository: _PortfolioRecordRepository({
+            PortfolioRecordType.certification: [],
+            PortfolioRecordType.achievement: [],
+          }),
+          evidenceRepository: _EvidenceRepository([]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Profile and background'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alex Rivera'), findsOneWidget);
+    expect(find.text('About you'), findsOneWidget);
+    expect(find.text('Education and training'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Mapúa University'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('BS Computer Science'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Contact details'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Contact details'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Experience'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Experience'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('UX Intern'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Accessible Labs'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Flutter'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Flutter'), findsOneWidget);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 1000));
+    await tester.pumpAndSettle();
+    expect(find.text('Generate Resume'), findsNothing);
+    expect(find.text('View Portfolio'), findsNothing);
+
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('alex@example.test'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Log out'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Log out'), findsOneWidget);
+
+    await tester.tap(find.text('Log out'));
+    await tester.pumpAndSettle();
+    expect(find.text('Log out of Prooffolio?'), findsOneWidget);
+    await tester.tap(find.text('Log out').last);
+    await tester.pumpAndSettle();
+    expect(signOutCalls, 1);
+  });
+
+  testWidgets('Profile is available from the fifth bottom navigation tab', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeShell(
+          profileRepository: _ProfileRepository(
+            profile: const ProfileBackground(
+              displayName: 'Alex Rivera',
+              username: 'alex',
+            ),
+          ),
+          profileUserId: 'user-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final navigation = find.byType(NavigationBar);
+    expect(
+      find.descendant(of: navigation, matching: find.text('Profile')),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: navigation,
+        matching: find.byIcon(Icons.person_outline),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_selectedNavigationIndex(tester), 4);
+    expect(find.text('Alex Rivera'), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsOneWidget);
   });
 
   testWidgets(
@@ -296,18 +459,26 @@ void main() {
   testWidgets(
     'shortcuts reach the existing project, skill, and portfolio destinations',
     (tester) async {
-      for (final shortcut in [
-        ('Add Project', 1),
-        ('Manage Skills', 2),
-        ('Generate Resume', 3),
-        ('Portfolio', 3),
+      for (final (label, index, opensPortfolio) in [
+        ('Add Project', 1, false),
+        ('Manage Skills', 2, false),
+        ('Generate Resume', 0, true),
+        ('Portfolio', 0, true),
       ]) {
         await tester.pumpWidget(
-          MaterialApp(home: HomeShell(key: ValueKey(shortcut.$1))),
+          MaterialApp(home: HomeShell(key: ValueKey(label))),
         );
         await tester.pumpAndSettle();
-        await _tapShortcut(tester, shortcut.$1);
-        expect(_selectedNavigationIndex(tester), shortcut.$2);
+        await _tapShortcut(tester, label);
+        if (opensPortfolio) {
+          expect(_selectedNavigationIndex(tester), 3);
+          expect(find.text('Portfolio Preview'), findsOneWidget);
+          await tester.tap(find.byTooltip('Back to Home'));
+          await tester.pumpAndSettle();
+          expect(_selectedNavigationIndex(tester), index);
+        } else {
+          expect(_selectedNavigationIndex(tester), index);
+        }
       }
     },
   );
@@ -432,10 +603,17 @@ EvidenceRecord _evidence(String title) => EvidenceRecord(
 );
 
 class _ProfileRepository implements ProfileBackgroundRepository {
-  _ProfileRepository({required this.profile, this.signedUrl});
+  _ProfileRepository({
+    required this.profile,
+    this.signedUrl,
+    this.education = const [],
+    this.experience = const [],
+  });
 
   final ProfileBackground? profile;
   final String? signedUrl;
+  final List<EducationRecord> education;
+  final List<ExperienceRecord> experience;
   String? signedPhotoPath;
 
   @override
@@ -454,7 +632,7 @@ class _ProfileRepository implements ProfileBackgroundRepository {
   ) async {}
 
   @override
-  Future<List<EducationRecord>> listEducation(String userId) async => [];
+  Future<List<EducationRecord>> listEducation(String userId) async => education;
 
   @override
   Future<EducationRecord> saveEducation(
@@ -467,7 +645,8 @@ class _ProfileRepository implements ProfileBackgroundRepository {
   Future<void> deleteEducation(String userId, String id) async {}
 
   @override
-  Future<List<ExperienceRecord>> listExperience(String userId) async => [];
+  Future<List<ExperienceRecord>> listExperience(String userId) async =>
+      experience;
 
   @override
   Future<ExperienceRecord> saveExperience(

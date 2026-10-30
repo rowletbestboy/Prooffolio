@@ -15,10 +15,14 @@ class ProfileSetupScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.onComplete,
+    this.initialDisplayName = '',
+    this.initialUsername = '',
   });
 
   final ProfileRepository repository;
   final VoidCallback onComplete;
+  final String initialDisplayName;
+  final String initialUsername;
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -30,6 +34,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _usernameController = TextEditingController();
   bool _saving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayNameController.text = widget.initialDisplayName;
+    _usernameController.text = widget.initialUsername;
+  }
 
   @override
   void dispose() {

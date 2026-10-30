@@ -191,44 +191,51 @@ pw.Document _visualDocument(ResumeContent content, Uint8List? photo) {
           children: [
             pw.Partition(
               width: sidebarWidth,
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                mainAxisSize: pw.MainAxisSize.min,
-                children: [
-                  if (photoImage != null)
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.only(bottom: 14),
-                      child: pw.Center(
-                        child: pw.ClipOval(
-                          child: pw.SizedBox(
-                            width: 66,
-                            height: 66,
-                            child: pw.Image(photoImage, fit: pw.BoxFit.cover),
+              child: pw.Padding(
+                padding: pw.EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                  top: photoImage == null ? 0 : 24,
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisSize: pw.MainAxisSize.min,
+                  children: [
+                    if (photoImage != null)
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 14),
+                        child: pw.Center(
+                          child: pw.ClipOval(
+                            child: pw.SizedBox(
+                              width: 66,
+                              height: 66,
+                              child: pw.Image(photoImage, fit: pw.BoxFit.cover),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  if (content.contactDetails.isNotEmpty) ...[
-                    _visualSectionHeading('Contact Me'),
-                    for (final detail in content.contactDetails)
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.only(bottom: 4),
-                        child: pw.Text(
-                          '${detail.label}: ${detail.value}',
-                          style: const pw.TextStyle(fontSize: 7.5),
+                    if (content.contactDetails.isNotEmpty) ...[
+                      _visualSectionHeading('Contact Me'),
+                      for (final detail in content.contactDetails)
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.only(bottom: 4),
+                          child: pw.Text(
+                            '${detail.label}: ${detail.value}',
+                            style: const pw.TextStyle(fontSize: 7.5),
+                          ),
                         ),
-                      ),
+                    ],
+                    for (final section in sidebarSections) ...[
+                      _visualSectionHeading(section.heading),
+                      if (section.heading == 'Skills')
+                        for (final entry in section.entries)
+                          _visualBullet(entry.title)
+                      else
+                        for (final entry in section.entries)
+                          _visualEntry(entry, compact: true),
+                    ],
                   ],
-                  for (final section in sidebarSections) ...[
-                    _visualSectionHeading(section.heading),
-                    if (section.heading == 'Skills')
-                      for (final entry in section.entries)
-                        _visualBullet(entry.title)
-                    else
-                      for (final entry in section.entries)
-                        _visualEntry(entry, compact: true),
-                  ],
-                ],
+                ),
               ),
             ),
             pw.Partition(

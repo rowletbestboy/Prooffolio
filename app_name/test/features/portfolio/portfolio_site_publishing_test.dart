@@ -1,3 +1,4 @@
+import 'package:app_name/features/portfolio/data/portfolio_site_generator.dart';
 import 'package:app_name/features/portfolio/data/portfolio_publication_repository.dart';
 import 'package:app_name/features/portfolio/domain/portfolio_content.dart';
 import 'package:app_name/features/portfolio/domain/portfolio_template.dart';
@@ -14,6 +15,7 @@ void main() {
     (tester) async {
       _setLargeViewport(tester);
       final repository = _FakePublicationRepository();
+      await _preparePortfolioTemplate(tester);
       await tester.pumpWidget(
         MaterialApp(
           home: PortfolioSitePreview(
@@ -25,6 +27,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _waitForPortfolioGeneration(tester);
 
       expect(
         tester
@@ -40,7 +43,7 @@ void main() {
             .value,
         isTrue,
       );
-      await tester.tap(find.text('Publish website'));
+      await tester.tap(find.text('Publish Portfolio'));
       await tester.pumpAndSettle();
 
       expect(repository.publishCalls, 0);
@@ -62,6 +65,7 @@ void main() {
     (tester) async {
       _setLargeViewport(tester);
       final repository = _FakePublicationRepository(status: _activePublication);
+      await _preparePortfolioTemplate(tester);
       await tester.pumpWidget(
         MaterialApp(
           home: PortfolioSitePreview(
@@ -73,6 +77,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _waitForPortfolioGeneration(tester);
 
       expect(
         tester
@@ -102,7 +107,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.unpublishCalls, 1);
-      expect(find.text('Publish website'), findsOneWidget);
+      expect(find.text('Publish Portfolio'), findsOneWidget);
     },
   );
 }
@@ -112,6 +117,23 @@ void _setLargeViewport(WidgetTester tester) {
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+Future<void> _preparePortfolioTemplate(WidgetTester tester) async {
+  await tester.runAsync(
+    () => PortfolioSiteGenerator.generate(
+      _content,
+      PortfolioSelection.allFrom(_content),
+      PortfolioTemplate.light,
+    ),
+  );
+}
+
+Future<void> _waitForPortfolioGeneration(WidgetTester tester) async {
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 100)),
+  );
+  await tester.pumpAndSettle();
 }
 
 final _content = PortfolioContent(

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_page_app_bar.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
 import 'project_detail_screen.dart';
@@ -19,11 +20,21 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   late Future<List<Project>> _projectsFuture;
+  final _searchController = TextEditingController();
+  bool _searchVisible = false;
+  String _query = '';
+  ProjectPublicationStatus? _publicationFilter;
 
   @override
   void initState() {
     super.initState();
     _projectsFuture = widget.repository.listProjects();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _reload() {
@@ -59,17 +70,6 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: const AppPageAppBar(title: 'Projects'),
-      floatingActionButton: FutureBuilder<List<Project>>(
-        future: _projectsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.data?.isNotEmpty != true) return const SizedBox.shrink();
-          return FloatingActionButton.extended(
-            onPressed: _addProject,
-            icon: const Icon(Icons.add),
-            label: const Text('Add project'),
-          );
-        },
-      ),
       body: FutureBuilder<List<Project>>(
         future: _projectsFuture,
         builder: (context, snapshot) {
@@ -83,35 +83,159 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
           if (projects.isEmpty) {
             return _EmptyProjectsState(onAddProject: _addProject);
           }
+          final filteredProjects = projects.where(_matchesFilters).toList();
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 maxWidth: AppTheme.contentMaxWidth,
               ),
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(pageGutter, 8, pageGutter, 96),
-                children: [
-                  Text(
-                    'A record of what you made and what you contributed.',
-                    style: textTheme.bodyLarge,
+              child: SafeArea(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    pageGutter,
+                    12,
+                    pageGutter,
+                    AppTheme.floatingNavigationContentInset +
+                        MediaQuery.viewPaddingOf(context).bottom,
                   ),
-                  const SizedBox(height: 20),
-                  for (final project in projects)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _ProjectListTile(
-                        project: project,
-                        onTap: () => _openProject(project),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Projects',
+                            style: textTheme.headlineMedium,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: _searchVisible
+                              ? 'Close project search'
+                              : 'Search projects',
+                          onPressed: () {
+                            setState(() {
+                              _searchVisible = !_searchVisible;
+                              if (!_searchVisible) {
+                                _searchController.clear();
+                                _query = '';
+                              }
+                            });
+                          },
+                          icon: Icon(
+                            _searchVisible ? Icons.close : Icons.search,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Showcase your work, skills, and the impact you made.',
+                      style: textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: _addProject,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add project'),
                       ),
                     ),
-                ],
+                    if (_searchVisible) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        key: const Key('projectSearchField'),
+                        controller: _searchController,
+                        onChanged: (value) => setState(() => _query = value),
+                        decoration: InputDecoration(
+                          hintText: 'Search projects',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _query.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear search',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _query = '');
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _publicationChip('All', null),
+                        _publicationChip(
+                          'Published',
+                          ProjectPublicationStatus.published,
+                        ),
+                        _publicationChip(
+                          'Draft',
+                          ProjectPublicationStatus.draft,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (filteredProjects.isEmpty)
+                      _NoProjectMatches(
+                        onClear: () {
+                          _searchController.clear();
+                          setState(() {
+                            _query = '';
+                            _publicationFilter = null;
+                          });
+                        },
+                      )
+                    else
+                      for (final project in filteredProjects)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ProjectListTile(
+                            project: project,
+                            onTap: () => _openProject(project),
+                          ),
+                        ),
+                  ],
+                ),
               ),
             ),
           );
         },
       ),
     );
+  }
+
+  Widget _publicationChip(String label, ProjectPublicationStatus? value) =>
+      ChoiceChip(
+        key: Key('projectPublicationFilter-${value?.name ?? 'all'}'),
+        label: Text(label),
+        selected: _publicationFilter == value,
+        onSelected: (_) => setState(() => _publicationFilter = value),
+      );
+
+  bool _matchesFilters(Project project) {
+    if (_publicationFilter != null &&
+        project.publicationStatus != _publicationFilter) {
+      return false;
+    }
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return [
+      project.title,
+      project.summary,
+      project.problemStatement,
+      project.description,
+      project.contribution,
+      project.challenges,
+      project.lessonsLearned,
+      project.repositoryUrl,
+      project.demoUrl,
+      ...project.technologies,
+      project.status.name,
+    ].any((value) => value.toLowerCase().contains(query));
   }
 }
 
@@ -125,7 +249,13 @@ class _EmptyProjectsState extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.fromLTRB(
+          28,
+          28,
+          28,
+          AppTheme.floatingNavigationContentInset +
+              MediaQuery.viewPaddingOf(context).bottom,
+        ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -207,6 +337,36 @@ class _ProjectLoadError extends StatelessWidget {
   }
 }
 
+class _NoProjectMatches extends StatelessWidget {
+  const _NoProjectMatches({required this.onClear});
+
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      child: Column(
+        children: [
+          Text(
+            'No projects match these filters',
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try a different search or clear the filters.',
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          TextButton(onPressed: onClear, child: const Text('Clear filters')),
+        ],
+      ),
+    ),
+  );
+}
+
 class _ProjectListTile extends StatelessWidget {
   const _ProjectListTile({required this.project, required this.onTap});
 
@@ -230,6 +390,8 @@ class _ProjectListTile extends StatelessWidget {
                 children: [
                   const AppIconTile(
                     icon: Icons.work_outline,
+                    color: AppColors.indigo,
+                    backgroundColor: AppColors.indigoContainer,
                     size: 44,
                     iconSize: 21,
                   ),
@@ -237,11 +399,11 @@ class _ProjectListTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       project.title,
-                      style: theme.textTheme.titleLarge,
+                      style: theme.textTheme.titleMedium,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _StatusLabel(status: project.status),
+                  _PublicationLabel(status: project.publicationStatus),
                 ],
               ),
               if (project.summary.isNotEmpty) ...[
@@ -261,14 +423,26 @@ class _ProjectListTile extends StatelessWidget {
                   }).toList(),
                 ),
               ],
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.lock_outline, size: 15),
-                  const SizedBox(width: 5),
+                  Icon(
+                    project.status == ProjectStatus.completed
+                        ? Icons.check_circle_outline
+                        : Icons.timelapse_outlined,
+                    size: 16,
+                    color: AppColors.slateGray,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'Private draft · Open project',
+                    _statusText(project.status),
                     style: theme.textTheme.labelMedium,
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: AppColors.slateGray,
                   ),
                 ],
               ),
@@ -280,25 +454,34 @@ class _ProjectListTile extends StatelessWidget {
   }
 }
 
-class _StatusLabel extends StatelessWidget {
-  const _StatusLabel({required this.status});
+class _PublicationLabel extends StatelessWidget {
+  const _PublicationLabel({required this.status});
 
-  final ProjectStatus status;
+  final ProjectPublicationStatus status;
 
   @override
   Widget build(BuildContext context) {
-    final label = switch (status) {
-      ProjectStatus.inProgress => 'In progress',
-      ProjectStatus.completed => 'Completed',
-      ProjectStatus.paused => 'Paused',
-    };
+    final published = status == ProjectPublicationStatus.published;
+    final label = published ? 'Published' : 'Draft';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: published ? AppColors.tealContainer : AppColors.indigoContainer,
         borderRadius: BorderRadius.circular(100),
       ),
-      child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: published ? AppColors.teal : AppColors.indigo,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
+
+String _statusText(ProjectStatus status) => switch (status) {
+  ProjectStatus.inProgress => 'In progress',
+  ProjectStatus.completed => 'Completed',
+  ProjectStatus.paused => 'Paused',
+};

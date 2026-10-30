@@ -7,6 +7,8 @@ import 'package:app_name/features/portfolio/domain/portfolio_template.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final content = _portfolioContent();
   const selection = PortfolioSelection(
     includeDisplayName: true,

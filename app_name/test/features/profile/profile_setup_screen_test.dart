@@ -39,6 +39,31 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('profile setup pre-fills details collected during sign-up', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProfileSetupScreen(
+          repository: _FakeProfileRepository(),
+          onComplete: () {},
+          initialDisplayName: 'Avery Student',
+          initialUsername: 'avery_student',
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<TextFormField>(find.byType(TextFormField).first).controller!.text,
+      'Avery Student',
+    );
+    expect(
+      tester.widget<TextFormField>(find.byType(TextFormField).last).controller!.text,
+      'avery_student',
+    );
+  });
 }
 
 Finder get _themeCard => find.byWidgetPredicate((widget) {

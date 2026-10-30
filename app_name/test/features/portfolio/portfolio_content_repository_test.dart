@@ -317,7 +317,7 @@ void main() {
     },
   );
 
-  testWidgets('achievement action opens the manager on Achievements', (
+  testWidgets('achievement shortcut opens the manager on Achievements', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(850, 2000);
@@ -347,15 +347,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.byIcon(Icons.public_outlined),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Manage achievements'));
-    await tester.tap(find.text('Manage achievements'));
+    await tester.ensureVisible(find.text('Awards'));
+    await tester.tap(find.text('Awards'));
     await tester.pumpAndSettle();
 
     final tabs = tester.widget<SegmentedButton<PortfolioRecordType>>(

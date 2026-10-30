@@ -9,6 +9,8 @@ import 'package:app_name/features/profile/domain/profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   const photoBytes = <int>[0xff, 0xd8, 0xff, 0xd9];
   final content = PortfolioContent(
     profile: const PortfolioSource.available(
@@ -152,8 +154,34 @@ void main() {
     achievementIds: {'selected-achievement-id'},
   );
 
-  test('generated site contains only selected public information', () {
-    final bundle = PortfolioSiteGenerator.generate(
+  test(
+    'uses the editorial template and shows the selected photo in its hero',
+    () async {
+      final bundle = await PortfolioSiteGenerator.generate(
+        content,
+        selection,
+        PortfolioTemplate.light,
+      );
+      final html = utf8.decode(bundle.files['index.html']!);
+
+      expect(html, contains('class="masthead"'));
+      expect(
+        html,
+        contains('<img class="hero-photo" src="portfolio-photo.jpg"'),
+      );
+      expect(html, contains('Community educator'));
+      expect(html, isNot(contains('Smart Geriatric Healthcare Assistant')));
+
+      final previewHtml = PortfolioSiteGenerator.previewHtml(bundle);
+      expect(
+        previewHtml,
+        contains('src="data:image/jpeg;base64,${base64Encode(photoBytes)}"'),
+      );
+    },
+  );
+
+  test('generated site contains only selected public information', () async {
+    final bundle = await PortfolioSiteGenerator.generate(
       content,
       selection,
       PortfolioTemplate.light,
@@ -181,13 +209,13 @@ void main() {
     expect(bundle.files['portfolio-photo.jpg'], photoBytes);
   });
 
-  test('Upwork link is included only after explicit selection', () {
-    final hidden = PortfolioSiteGenerator.generate(
+  test('Upwork link is included only after explicit selection', () async {
+    final hidden = await PortfolioSiteGenerator.generate(
       content,
       selection,
       PortfolioTemplate.light,
     );
-    final shown = PortfolioSiteGenerator.generate(
+    final shown = await PortfolioSiteGenerator.generate(
       content,
       selection.copyWith(includeUpwork: true),
       PortfolioTemplate.light,
@@ -207,8 +235,8 @@ void main() {
     );
   });
 
-  test('user text remains inert and unsafe URLs never become links', () {
-    final bundle = PortfolioSiteGenerator.generate(
+  test('user text remains inert and unsafe URLs never become links', () async {
+    final bundle = await PortfolioSiteGenerator.generate(
       content,
       selection,
       PortfolioTemplate.light,
@@ -225,8 +253,8 @@ void main() {
     expect(html, isNot(contains(' onmouseover=')));
   });
 
-  test('photo alt text does not disclose an unselected display name', () {
-    final bundle = PortfolioSiteGenerator.generate(
+  test('photo alt text does not disclose an unselected display name', () async {
+    final bundle = await PortfolioSiteGenerator.generate(
       content,
       selection.copyWith(includeDisplayName: false),
       PortfolioTemplate.light,
@@ -237,64 +265,92 @@ void main() {
     expect(html, isNot(contains('alt="Alex')));
   });
 
-  test('generated site uses the responsive one-page theme-toggle template', () {
-    final light = PortfolioSiteGenerator.generate(
+  test(
+    'generated site uses the editorial responsive theme-toggle template',
+    () async {
+      final light = await PortfolioSiteGenerator.generate(
+        content,
+        selection,
+        PortfolioTemplate.light,
+      );
+      final dark = await PortfolioSiteGenerator.generate(
+        content,
+        selection,
+        PortfolioTemplate.dark,
+      );
+
+      expect(
+        utf8.decode(light.files['index.html']!),
+        utf8.decode(dark.files['index.html']!),
+      );
+      expect(
+        utf8.decode(light.files['styles.css']!),
+        utf8.decode(dark.files['styles.css']!),
+      );
+      final html = utf8.decode(light.files['index.html']!);
+      final styles = utf8.decode(light.files['styles.css']!);
+      final script = utf8.decode(light.files['app.js']!);
+      expect(html, contains('class="masthead"'));
+      expect(html, contains('class="hero-aside"'));
+      expect(html, contains('class="hero-photo-frame"'));
+      expect(html, contains('class="entry"'));
+      expect(html, contains('id="theme-btn"'));
+      expect(html, contains('aria-label="Switch theme"'));
+      expect(styles, contains('--bg: #F6F7F8'));
+      expect(styles, contains("font-family: var(--font-display)"));
+      expect(styles, contains(':root[data-theme="dark"]'));
+      expect(styles, contains('@media (prefers-color-scheme: dark)'));
+      expect(styles, contains('@media (max-width: 900px)'));
+      expect(styles, contains('@media (max-width: 600px)'));
+      expect(styles, contains('@media (prefers-reduced-motion: reduce)'));
+      expect(
+        script,
+        contains("localStorage.getItem('portfolio-editorial-theme')"),
+      );
+      expect(
+        script,
+        contains("localStorage.setItem('portfolio-editorial-theme', next)"),
+      );
+      expect(script, contains("setAttribute('data-theme', next)"));
+      expect(html, contains('fonts.googleapis.com'));
+      expect(html, isNot(contains('Fresh graduate')));
+      expect(html, isNot(contains('your.name@example.com')));
+      expect(
+        light.files.keys,
+        containsAll(['index.html', 'styles.css', 'app.js']),
+      );
+    },
+  );
+
+  test('profile portrait is compact, circular, and right aligned', () async {
+    final bundle = await PortfolioSiteGenerator.generate(
       content,
       selection,
       PortfolioTemplate.light,
     );
-    final dark = PortfolioSiteGenerator.generate(
-      content,
-      selection,
-      PortfolioTemplate.dark,
-    );
+    final styles = utf8.decode(bundle.files['styles.css']!);
 
-    expect(
-      utf8.decode(light.files['index.html']!),
-      utf8.decode(dark.files['index.html']!),
-    );
-    expect(
-      utf8.decode(light.files['styles.css']!),
-      utf8.decode(dark.files['styles.css']!),
-    );
-    final html = utf8.decode(light.files['index.html']!);
-    final styles = utf8.decode(light.files['styles.css']!);
-    final script = utf8.decode(light.files['app.js']!);
-    expect(html, contains('class="site-head"'));
-    expect(html, contains('class="wrap hero-grid'));
-    expect(html, contains('class="profile"'));
-    expect(html, contains('class="case"'));
-    expect(html, contains('id="theme-btn"'));
-    expect(html, contains('aria-label="Switch theme"'));
-    expect(styles, contains('--bg: #EEF1F5'));
-    expect(styles, contains(':root[data-theme="dark"]'));
-    expect(styles, contains('@media (prefers-color-scheme: dark)'));
-    expect(styles, contains('@media (max-width: 780px)'));
-    expect(styles, contains('@media (max-width: 560px)'));
-    expect(styles, contains('@media (prefers-reduced-motion: reduce)'));
-    expect(script, contains("'portfolio-theme:' + window.location.pathname"));
-    expect(script, contains('localStorage.getItem(themeKey)'));
-    expect(script, contains('localStorage.setItem(themeKey, next)'));
-    expect(script, contains("setAttribute('data-theme', next)"));
-    expect(html, isNot(contains('fonts.googleapis.com')));
-    expect(html, isNot(contains('Fresh graduate')));
-    expect(html, isNot(contains('your.name@example.com')));
-    expect(
-      light.files.keys,
-      containsAll(['index.html', 'styles.css', 'app.js']),
-    );
+    expect(styles, contains('width: min(100%, 300px)'));
+    expect(styles, contains('aspect-ratio: 1'));
+    expect(styles, contains('border-radius: 50%'));
+    expect(styles, contains('justify-items: end'));
+    expect(styles, contains('justify-self: end'));
+    expect(styles, contains('object-fit: cover'));
   });
 
-  test('ZIP archive can be opened and preserves generated file bytes', () {
-    final bundle = PortfolioSiteGenerator.generate(
-      content,
-      selection,
-      PortfolioTemplate.dark,
-    );
+  test(
+    'ZIP archive can be opened and preserves generated file bytes',
+    () async {
+      final bundle = await PortfolioSiteGenerator.generate(
+        content,
+        selection,
+        PortfolioTemplate.dark,
+      );
 
-    final archive = ZipDecoder().decodeBytes(bundle.toZipBytes());
-    final html = archive.singleWhere((file) => file.name == 'index.html');
+      final archive = ZipDecoder().decodeBytes(bundle.toZipBytes());
+      final html = archive.singleWhere((file) => file.name == 'index.html');
 
-    expect(html.content, orderedEquals(bundle.files['index.html']!));
-  });
+      expect(html.content, orderedEquals(bundle.files['index.html']!));
+    },
+  );
 }

@@ -74,6 +74,7 @@ flutter:
   assets:
     - assets/prooffolio_logo_clean.png
     - assets/prooffolio_mark_clean.png
+    - assets/Template Portfolio Editorial.html
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_mark.dart';
 import '../../../core/widgets/app_icon_tile.dart';
 import '../../../core/widgets/app_page_app_bar.dart';
+import '../../../core/widgets/app_select_field.dart';
 import '../data/profile_repository.dart';
 import '../domain/profile.dart';
 
@@ -739,12 +740,10 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<CareerStage?>(
+                    AppSelectField<CareerStage?>(
                       key: const Key('careerStageField'),
-                      initialValue: _careerStage,
-                      decoration: const InputDecoration(
-                        labelText: 'Where you are in your career (optional)',
-                      ),
+                      value: _careerStage,
+                      label: 'Where you are in your career (optional)',
                       items: [
                         const DropdownMenuItem<CareerStage?>(
                           value: null,
@@ -1426,9 +1425,9 @@ class _EducationEditorState extends State<_EducationEditor> {
               ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<EducationLevel?>(
-              initialValue: _level,
-              decoration: const InputDecoration(labelText: 'Level (optional)'),
+            AppSelectField<EducationLevel?>(
+              value: _level,
+              label: 'Level (optional)',
               items: [
                 const DropdownMenuItem<EducationLevel?>(
                   value: null,
@@ -1443,12 +1442,15 @@ class _EducationEditorState extends State<_EducationEditor> {
               onChanged: (value) => setState(() => _level = value),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<EducationStatus>(
-              initialValue: _status,
-              decoration: const InputDecoration(labelText: 'Progress'),
+            AppSelectField<EducationStatus>(
+              value: _status,
+              label: 'Progress',
               items: [
                 for (final status in EducationStatus.values)
-                  DropdownMenuItem(value: status, child: Text(status.label)),
+                  DropdownMenuItem<EducationStatus>(
+                    value: status,
+                    child: Text(status.label),
+                  ),
               ],
               onChanged: (value) => setState(() => _status = value ?? _status),
             ),
@@ -1581,15 +1583,16 @@ class _ExperienceEditorState extends State<_ExperienceEditor> {
               ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<ExperienceType>(
+            AppSelectField<ExperienceType>(
               key: const Key('experienceTypeField'),
-              initialValue: _type,
-              decoration: const InputDecoration(
-                labelText: 'Type of experience',
-              ),
+              value: _type,
+              label: 'Type of experience',
               items: [
                 for (final type in ExperienceType.values)
-                  DropdownMenuItem(value: type, child: Text(type.label)),
+                  DropdownMenuItem<ExperienceType>(
+                    value: type,
+                    child: Text(type.label),
+                  ),
               ],
               onChanged: (value) => setState(() => _type = value ?? _type),
             ),

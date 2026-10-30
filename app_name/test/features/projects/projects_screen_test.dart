@@ -32,6 +32,55 @@ void main() {
     expect(find.textContaining('real work'), findsOneWidget);
   });
 
+  testWidgets('project search and publication filters narrow the saved list', (
+    WidgetTester tester,
+  ) async {
+    final repository = _FakeProjectRepository(
+      projects: [
+        _project(
+          id: 'published',
+          title: 'EcoTrack',
+          summary: 'Measure carbon footprint',
+          publicationStatus: ProjectPublicationStatus.published,
+        ),
+        _project(
+          id: 'draft',
+          title: 'Campus planner',
+          summary: 'Organize student schedules',
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProjectsScreen(repository: repository),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('EcoTrack'), findsOneWidget);
+    expect(find.text('Campus planner'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Search projects'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('projectSearchField')),
+      'carbon',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('EcoTrack'), findsOneWidget);
+    expect(find.text('Campus planner'), findsNothing);
+
+    await tester.enterText(find.byKey(const Key('projectSearchField')), '');
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('projectPublicationFilter-published')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('EcoTrack'), findsOneWidget);
+    expect(find.text('Campus planner'), findsNothing);
+  });
+
   testWidgets('user can create, edit and confirm deletion of a project', (
     WidgetTester tester,
   ) async {
@@ -202,7 +251,10 @@ Color? _dialogBackground(WidgetTester tester) => Theme.of(
 ).dialogTheme.backgroundColor;
 
 class _FakeProjectRepository implements ProjectRepository {
-  final List<Project> projects = [];
+  _FakeProjectRepository({List<Project> projects = const []})
+    : projects = List.of(projects);
+
+  final List<Project> projects;
   int _nextId = 1;
 
   @override
@@ -241,4 +293,34 @@ class _FakeProjectRepository implements ProjectRepository {
   Future<void> deleteProject(String id) async {
     projects.removeWhere((project) => project.id == id);
   }
+}
+
+Project _project({
+  required String id,
+  required String title,
+  required String summary,
+  ProjectPublicationStatus publicationStatus = ProjectPublicationStatus.draft,
+}) {
+  final now = DateTime.utc(2026, 10, 20);
+  return Project(
+    id: id,
+    userId: 'user-1',
+    title: title,
+    summary: summary,
+    problemStatement: '',
+    description: '',
+    keyFeatures: const [],
+    technologies: const ['Flutter'],
+    contribution: '',
+    challenges: '',
+    lessonsLearned: '',
+    repositoryUrl: '',
+    demoUrl: '',
+    startDate: null,
+    endDate: null,
+    status: ProjectStatus.completed,
+    publicationStatus: publicationStatus,
+    createdAt: now,
+    updatedAt: now,
+  );
 }

@@ -1,4 +1,6 @@
 import 'package:app_name/features/portfolio/domain/portfolio_content.dart';
+import 'package:app_name/features/portfolio/data/portfolio_site_generator.dart';
+import 'package:app_name/features/portfolio/domain/portfolio_template.dart';
 import 'package:app_name/features/portfolio/presentation/portfolio_site_preview.dart';
 import 'package:app_name/core/widgets/app_brand_mark.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +38,56 @@ void main() {
   );
 
   testWidgets(
+    'shows the portfolio preview dashboard and keeps content choices editable',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.runAsync(
+        () => PortfolioSiteGenerator.generate(
+          content,
+          PortfolioSelection.allFrom(content),
+          PortfolioTemplate.light,
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PortfolioSitePreview(
+            content: content,
+            previewBuilder: (context, html) =>
+                const SizedBox(key: ValueKey('portfolio-site-preview-surface')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await _pumpPortfolioGeneration(tester);
+
+      expect(find.text('Your Portfolio'), findsOneWidget);
+      expect(find.text('Live preview'), findsOneWidget);
+      expect(find.text('Portfolio readiness'), findsOneWidget);
+      expect(find.text('Website'), findsOneWidget);
+      expect(find.text('Mobile'), findsOneWidget);
+      expect(find.text('Edit Portfolio'), findsOneWidget);
+      expect(find.text('Download Website'), findsOneWidget);
+      expect(find.widgetWithText(CheckboxListTile, 'Email'), findsNothing);
+
+      await tester.tap(find.text('Edit Portfolio'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(CheckboxListTile, 'Email'), findsOneWidget);
+      expect(
+        tester
+            .widget<CheckboxListTile>(
+              find.widgetWithText(CheckboxListTile, 'Email'),
+            )
+            .value,
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets(
     'selection starts private and generated page provides its own theme toggle',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 5000);
@@ -53,6 +105,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await _pumpPortfolioGeneration(tester);
 
       expect(
         tester
@@ -69,6 +122,8 @@ void main() {
         ),
         findsOneWidget,
       );
+      await tester.tap(find.text('Edit Portfolio'));
+      await tester.pumpAndSettle();
       expect(
         tester
             .widget<CheckboxListTile>(find.byType(CheckboxListTile).first)
@@ -78,6 +133,7 @@ void main() {
 
       await tester.tap(find.byType(CheckboxListTile).first);
       await tester.pumpAndSettle();
+      await _pumpPortfolioGeneration(tester);
       var generatedHtml = tester
           .widget<SelectableText>(
             find.byKey(const ValueKey('generated-preview')),
@@ -114,6 +170,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await _pumpPortfolioGeneration(tester);
 
     var generatedHtml = tester
         .widget<SelectableText>(find.byKey(const ValueKey('generated-preview')))
@@ -129,6 +186,8 @@ void main() {
     expect(generatedHtml, isNot(contains('Private proof file')));
     expect(generatedHtml, isNot(contains('private-project-id')));
     expect(generatedHtml, isNot(contains('private-evidence-id')));
+    await tester.tap(find.text('Edit Portfolio'));
+    await tester.pumpAndSettle();
     expect(
       tester
           .widget<CheckboxListTile>(
@@ -142,9 +201,17 @@ void main() {
       find.widgetWithText(CheckboxListTile, 'Community Exchange'),
     );
     await tester.pumpAndSettle();
+    await _pumpPortfolioGeneration(tester);
     generatedHtml = tester
         .widget<SelectableText>(find.byKey(const ValueKey('generated-preview')))
         .data!;
     expect(generatedHtml, isNot(contains('A neighborhood resource exchange.')));
   });
+}
+
+Future<void> _pumpPortfolioGeneration(WidgetTester tester) async {
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 100)),
+  );
+  await tester.pumpAndSettle();
 }

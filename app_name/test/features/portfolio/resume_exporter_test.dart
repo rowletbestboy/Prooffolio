@@ -6,6 +6,7 @@ import 'package:app_name/features/portfolio/data/resume_exporter.dart';
 import 'package:app_name/features/portfolio/domain/resume_content.dart';
 import 'package:app_name/features/portfolio/domain/resume_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pdf/pdf.dart';
 
 import 'resume_test_fixtures.dart';
 
@@ -58,6 +59,29 @@ void main() {
     final headingContent = pdf.substring(0, headingIndex);
     expect(headingContent, contains('1 0 0 1 184 0 cm'));
   });
+
+  test(
+    'visual PDF insets the photo and sidebar text from page edges',
+    () async {
+      final content = ResumeContent.fromPortfolioContent(
+        portfolioContentWithResumeData(photoBytes: tinyPngBytes()),
+      );
+      final bytes = await ResumeExporter.toPdf(
+        content,
+        layout: ResumeLayout.visual,
+        includePhoto: true,
+      );
+      final stream = _firstCompressedPdfStream(bytes);
+      final imageDraw = RegExp(r'/I\d+ Do').firstMatch(stream);
+
+      expect(imageDraw, isNotNull);
+      final photoPosition = _translationAt(stream, imageDraw!.group(0)!);
+      final sidebarTextPosition = _translationAt(stream, '[(SKILLS)]TJ');
+
+      expect(sidebarTextPosition.$1, closeTo(40, .01));
+      expect(PdfPageFormat.a4.height - photoPosition.$2 - 66, closeTo(54, .1));
+    },
+  );
 
   test('DOCX export uses headings and ordinary text paragraphs', () async {
     final content = ResumeContent.fromPortfolioContent(
@@ -133,4 +157,32 @@ String _firstCompressedPdfStream(Uint8List bytes) {
   }
 
   throw StateError('PDF export did not include a readable content stream.');
+}
+
+(double, double) _translationAt(String stream, String marker) {
+  final markerIndex = stream.indexOf(marker);
+  if (markerIndex < 0) throw StateError('PDF stream did not contain $marker.');
+  final stack = <(double, double)>[];
+  var x = 0.0;
+  var y = 0.0;
+  final operators = RegExp(
+    r'\b(q|Q)\b|(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+'
+    r'(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+'
+    r'(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+cm',
+  );
+  for (final operator in operators.allMatches(
+    stream.substring(0, markerIndex),
+  )) {
+    if (operator.group(1) == 'q') {
+      stack.add((x, y));
+    } else if (operator.group(1) == 'Q') {
+      final previous = stack.removeLast();
+      x = previous.$1;
+      y = previous.$2;
+    } else {
+      x += double.parse(operator.group(6)!);
+      y += double.parse(operator.group(7)!);
+    }
+  }
+  return (x, y);
 }

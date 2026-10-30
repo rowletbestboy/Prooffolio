@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app_name/core/theme/app_colors.dart';
 import 'package:app_name/features/auth/data/auth_service.dart';
 import 'package:app_name/features/auth/presentation/auth_screen.dart';
 import 'package:app_name/features/auth/presentation/new_password_screen.dart';
@@ -28,7 +29,7 @@ void main() {
       MaterialApp(home: AuthScreen(authService: authService)),
     );
 
-    await _tapVisible(tester, find.text('New to Prooffolio? Create account'));
+    await _tapVisible(tester, find.text('Create one'));
     await tester.pumpAndSettle();
     await _tapVisible(
       tester,
@@ -36,6 +37,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Enter your full name'), findsOneWidget);
+    expect(find.text('Use 3 to 24 characters'), findsOneWidget);
+    expect(
+      find.text('Accept the Terms of Service and Privacy Policy'),
+      findsOneWidget,
+    );
     expect(find.text('Enter a valid email address'), findsOneWidget);
     expect(
       find.text('Enter a password of at least 8 characters'),
@@ -55,8 +62,16 @@ void main() {
       MaterialApp(home: AuthScreen(authService: authService)),
     );
 
-    await _tapVisible(tester, find.text('New to Prooffolio? Create account'));
+    await _tapVisible(tester, find.text('Create one'));
     await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('fullNameField')),
+      'Avery Student',
+    );
+    await tester.enterText(
+      find.byKey(const Key('usernameField')),
+      'avery_student',
+    );
     await tester.enterText(find.byKey(const Key('emailField')), 'a@b.com');
     await tester.enterText(
       find.byKey(const Key('passwordField')),
@@ -66,6 +81,7 @@ void main() {
       find.byKey(const Key('confirmPasswordField')),
       'good-pass-123',
     );
+    await _tapVisible(tester, find.byKey(const Key('termsCheckbox')));
     await _tapVisible(
       tester,
       find.widgetWithText(FilledButton, 'Create account'),
@@ -73,6 +89,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(authService.signUpCalls, 1);
+    expect(authService.displayName, 'Avery Student');
+    expect(authService.username, 'avery_student');
     expect(find.textContaining('Check your inbox'), findsOneWidget);
   });
 
@@ -165,7 +183,57 @@ void main() {
     expect(find.text('Prooffolio'), findsOneWidget);
   });
 
-  testWidgets('bottom navigation opens all four first-run destinations', (
+  testWidgets('home content fills the page behind bottom navigation', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+
+    expect(
+      tester.getSize(find.byType(IndexedStack)).height,
+      tester.getSize(find.byKey(const ValueKey('home-shell-body'))).height,
+    );
+  });
+
+  testWidgets('bottom navigation floats over the page content area', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+
+    final body = tester.getRect(find.byKey(const ValueKey('home-shell-body')));
+    final pageContent = tester.getRect(find.byType(IndexedStack));
+    final navigation = tester.getRect(
+      find.byKey(const ValueKey('floating-bottom-navigation')),
+    );
+
+    expect(navigation.bottom, lessThan(body.bottom));
+    expect(pageContent.bottom, body.bottom);
+    expect(pageContent.bottom, greaterThan(navigation.top));
+  });
+
+  testWidgets('home scroll content clears the floating navigation', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+    await tester.pumpAndSettle();
+
+    final listView = tester.widget<ListView>(find.byType(ListView).first);
+    final padding = listView.padding! as EdgeInsets;
+
+    expect(padding.bottom, greaterThanOrEqualTo(104));
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -2000));
+    await tester.pumpAndSettle();
+
+    final lastContent = tester.getRect(
+      find.text('Your portfolio stays private until you choose what to share.'),
+    );
+    final navigation = tester.getRect(
+      find.byKey(const ValueKey('floating-bottom-navigation')),
+    );
+    expect(lastContent.bottom, lessThan(navigation.top));
+  });
+
+  testWidgets('bottom navigation opens all five primary destinations', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
@@ -187,41 +255,88 @@ void main() {
       find.descendant(of: navigation, matching: find.text('Portfolio')),
       findsOneWidget,
     );
+    expect(
+      find.descendant(of: navigation, matching: find.text('Profile')),
+      findsOneWidget,
+    );
 
     await _tapDestination(tester, Icons.folder_outlined);
     await tester.pumpAndSettle();
     expect(find.text('No projects yet'), findsOneWidget);
+    expect(
+      (tester
+                  .widget<SingleChildScrollView>(
+                    find.byType(SingleChildScrollView).first,
+                  )
+                  .padding!
+              as EdgeInsets)
+          .bottom,
+      greaterThanOrEqualTo(104),
+    );
 
     await _tapDestination(tester, Icons.lightbulb_outline);
     await tester.pumpAndSettle();
     expect(find.text('No skills yet'), findsOneWidget);
+    expect(
+      (tester
+                  .widget<SingleChildScrollView>(
+                    find.byType(SingleChildScrollView).first,
+                  )
+                  .padding!
+              as EdgeInsets)
+          .bottom,
+      greaterThanOrEqualTo(104),
+    );
 
     await _tapDestination(tester, Icons.public_outlined);
     await tester.pumpAndSettle();
     expect(find.text('Portfolio Preview'), findsOneWidget);
-    expect(find.text('Private preview'), findsOneWidget);
-    final portfolioIntro = find.text(
-      'See how your portfolio will look to others.',
+    expect(
+      (tester.widget<ListView>(find.byType(ListView).first).padding!
+              as EdgeInsets)
+          .bottom,
+      greaterThanOrEqualTo(104),
     );
-    await tester.scrollUntilVisible(
-      portfolioIntro,
-      250,
-      scrollable: find.byType(Scrollable).first,
+
+    await _tapDestination(tester, Icons.person_outline);
+    await tester.pumpAndSettle();
+    expect(find.text('Your profile is not available'), findsOneWidget);
+    expect(
+      (tester
+                  .widget<SingleChildScrollView>(
+                    find.byType(SingleChildScrollView).first,
+                  )
+                  .padding!
+              as EdgeInsets)
+          .bottom,
+      greaterThanOrEqualTo(104),
     );
-    expect(portfolioIntro, findsOneWidget);
-    final savedWorkMessage = find.text(
-      'Your saved profile and work will appear here.',
-    );
-    await tester.scrollUntilVisible(
-      savedWorkMessage,
-      250,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(savedWorkMessage, findsOneWidget);
 
     await _tapDestination(tester, Icons.home_outlined);
     await tester.pumpAndSettle();
     expect(find.text('PORTFOLIO COMPLETION'), findsOneWidget);
+  });
+
+  testWidgets('bottom navigation is a floating light icon-only capsule', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+
+    final floatingBar = tester.widget<Container>(
+      find.byKey(const ValueKey('floating-bottom-navigation')),
+    );
+    final decoration = floatingBar.decoration! as BoxDecoration;
+    final navigation = tester.widget<NavigationBar>(find.byType(NavigationBar));
+
+    expect(decoration.color, AppColors.cloudWhite);
+    expect(decoration.borderRadius, BorderRadius.circular(28));
+    expect(decoration.boxShadow, isNotEmpty);
+    expect(
+      navigation.labelBehavior,
+      NavigationDestinationLabelBehavior.alwaysHide,
+    );
+    expect(navigation.backgroundColor, Colors.transparent);
+    expect(navigation.height, 64);
   });
 }
 
@@ -230,6 +345,8 @@ class _FakeAuthService implements AuthService {
 
   final AuthActionResult result;
   int signUpCalls = 0;
+  String? displayName;
+  String? username;
 
   @override
   Future<AuthActionResult> signIn({
@@ -241,8 +358,12 @@ class _FakeAuthService implements AuthService {
   Future<AuthActionResult> signUp({
     required String email,
     required String password,
+    required String displayName,
+    required String username,
   }) async {
     signUpCalls++;
+    this.displayName = displayName;
+    this.username = username;
     return result;
   }
 

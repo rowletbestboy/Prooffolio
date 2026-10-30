@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_icon_tile.dart';
 import '../../../core/widgets/app_page_app_bar.dart';
+import '../../../core/widgets/app_select_field.dart';
 import '../../projects/data/project_repository.dart';
 import '../../projects/domain/project.dart';
 import '../data/skill_repository.dart';
@@ -25,11 +26,21 @@ class SkillsScreen extends StatefulWidget {
 
 class _SkillsScreenState extends State<SkillsScreen> {
   late Future<List<Skill>> _skillsFuture;
+  final _searchController = TextEditingController();
+  bool _searchVisible = false;
+  String _query = '';
+  SkillCategory? _categoryFilter;
 
   @override
   void initState() {
     super.initState();
     _skillsFuture = widget.repository.listSkills();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _reload() => setState(() {
@@ -88,16 +99,6 @@ class _SkillsScreenState extends State<SkillsScreen> {
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
       appBar: const AppPageAppBar(title: 'Skills'),
-      floatingActionButton: FutureBuilder<List<Skill>>(
-        future: _skillsFuture,
-        builder: (context, snapshot) => snapshot.data?.isNotEmpty == true
-            ? FloatingActionButton.extended(
-                onPressed: () => _editSkill(),
-                icon: const Icon(Icons.add),
-                label: const Text('Add skill'),
-              )
-            : const SizedBox.shrink(),
-      ),
       body: FutureBuilder<List<Skill>>(
         future: _skillsFuture,
         builder: (context, snapshot) {
@@ -111,29 +112,141 @@ class _SkillsScreenState extends State<SkillsScreen> {
           if (skills.isEmpty) {
             return _EmptySkillsState(onAdd: () => _editSkill());
           }
+          final filteredSkills = skills.where(_matchesFilters).toList();
+          final linkedSkillCount = skills
+              .where((skill) => skill.projectIds.isNotEmpty)
+              .length;
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 maxWidth: AppTheme.contentMaxWidth,
               ),
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(pageGutter, 8, pageGutter, 104),
-                children: [
-                  Text(
-                    'A record of what you are learning and where you have used it.',
-                    style: theme.textTheme.bodyLarge,
+              child: SafeArea(
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    pageGutter,
+                    12,
+                    pageGutter,
+                    AppTheme.floatingNavigationContentInset +
+                        MediaQuery.viewPaddingOf(context).bottom,
                   ),
-                  const SizedBox(height: 16),
-                  const _SelfReportedNote(),
-                  const SizedBox(height: 20),
-                  for (final skill in skills)
-                    _SkillListItem(
-                      skill: skill,
-                      onTap: () => _editSkill(skill),
-                      onDelete: () => _deleteSkill(skill),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Skills',
+                            style: theme.textTheme.headlineMedium,
+                          ),
+                        ),
+                        IconButton(
+                          key: const Key('skillSearchToggle'),
+                          tooltip: _searchVisible
+                              ? 'Close skill search'
+                              : 'Search skills',
+                          onPressed: () {
+                            setState(() {
+                              _searchVisible = !_searchVisible;
+                              if (!_searchVisible) {
+                                _searchController.clear();
+                                _query = '';
+                              }
+                            });
+                          },
+                          icon: Icon(
+                            _searchVisible ? Icons.close : Icons.search,
+                          ),
+                        ),
+                      ],
                     ),
-                ],
+                    Text(
+                      'Organize your strengths and where you have used them.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 14),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: () => _editSkill(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add skill'),
+                      ),
+                    ),
+                    if (_searchVisible) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        key: const Key('skillSearchField'),
+                        controller: _searchController,
+                        onChanged: (value) => setState(() => _query = value),
+                        decoration: InputDecoration(
+                          hintText: 'Search skills',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _query.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear search',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _query = '');
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _SkillsSummary(
+                      skillCount: skills.length,
+                      linkedSkillCount: linkedSkillCount,
+                    ),
+                    const SizedBox(height: 12),
+                    const _SelfReportedNote(),
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _categoryChip('All', null),
+                          for (final category in SkillCategory.values)
+                            _categoryChip(category.label, category),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (filteredSkills.isEmpty)
+                      _NoSkillMatches(
+                        onClear: () {
+                          _searchController.clear();
+                          setState(() {
+                            _query = '';
+                            _categoryFilter = null;
+                          });
+                        },
+                      )
+                    else
+                      for (final category in SkillCategory.values)
+                        if (filteredSkills.any(
+                          (skill) => skill.category == category,
+                        )) ...[
+                          _SkillCategoryHeading(
+                            key: Key('skillCategoryGroup-${category.name}'),
+                            category: category,
+                            count: filteredSkills
+                                .where((skill) => skill.category == category)
+                                .length,
+                          ),
+                          for (final skill in filteredSkills.where(
+                            (skill) => skill.category == category,
+                          ))
+                            _SkillListItem(
+                              skill: skill,
+                              onTap: () => _editSkill(skill),
+                              onDelete: () => _deleteSkill(skill),
+                            ),
+                        ],
+                  ],
+                ),
               ),
             ),
           );
@@ -141,6 +254,153 @@ class _SkillsScreenState extends State<SkillsScreen> {
       ),
     );
   }
+
+  Widget _categoryChip(String label, SkillCategory? category) => Padding(
+    padding: const EdgeInsets.only(right: 8),
+    child: ChoiceChip(
+      key: Key('skillCategoryFilter-${category?.name ?? 'all'}'),
+      label: Text(label),
+      selected: _categoryFilter == category,
+      onSelected: (_) => setState(() => _categoryFilter = category),
+    ),
+  );
+
+  bool _matchesFilters(Skill skill) {
+    if (_categoryFilter != null && skill.category != _categoryFilter) {
+      return false;
+    }
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return [
+      skill.name,
+      skill.category.label,
+      skill.status.label,
+      ...skill.projectTitles,
+    ].any((value) => value.toLowerCase().contains(query));
+  }
+}
+
+class _SkillsSummary extends StatelessWidget {
+  const _SkillsSummary({
+    required this.skillCount,
+    required this.linkedSkillCount,
+  });
+
+  final int skillCount;
+  final int linkedSkillCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final unlinkedCount = skillCount - linkedSkillCount;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: Border.all(color: AppColors.lightSlate),
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.teal, width: 4),
+              color: AppColors.tealContainer,
+            ),
+            child: Text(
+              '$skillCount ${skillCount == 1 ? 'skill' : 'skills'}',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: AppColors.deepNavy,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$linkedSkillCount linked to projects',
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$unlinkedCount not linked yet',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkillCategoryHeading extends StatelessWidget {
+  const _SkillCategoryHeading({
+    super.key,
+    required this.category,
+    required this.count,
+  });
+
+  final SkillCategory category;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            category.label,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+        Text(
+          '$count ${count == 1 ? 'skill' : 'skills'}',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+      ],
+    ),
+  );
+}
+
+class _NoSkillMatches extends StatelessWidget {
+  const _NoSkillMatches({required this.onClear});
+
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      child: Column(
+        children: [
+          Text(
+            'No skills match these filters',
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try a different search or clear the filters.',
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          TextButton(onPressed: onClear, child: const Text('Clear filters')),
+        ],
+      ),
+    ),
+  );
 }
 
 class _EmptySkillsState extends StatelessWidget {
@@ -152,7 +412,13 @@ class _EmptySkillsState extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(28),
+        padding: EdgeInsets.fromLTRB(
+          28,
+          28,
+          28,
+          AppTheme.floatingNavigationContentInset +
+              MediaQuery.viewPaddingOf(context).bottom,
+        ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -454,14 +720,13 @@ class _SkillFormScreenState extends State<_SkillFormScreen> {
                       : null,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<SkillCategory>(
+                AppSelectField<SkillCategory>(
                   key: const Key('skillCategoryField'),
-                  initialValue: _category,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Category'),
+                  value: _category,
+                  label: 'Category',
                   items: [
                     for (final category in SkillCategory.values)
-                      DropdownMenuItem(
+                      DropdownMenuItem<SkillCategory>(
                         value: category,
                         child: Text(category.label),
                       ),
@@ -470,15 +735,13 @@ class _SkillFormScreenState extends State<_SkillFormScreen> {
                       setState(() => _category = value ?? _category),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<SkillStatus>(
+                AppSelectField<SkillStatus>(
                   key: const Key('skillStatusField'),
-                  initialValue: _status,
-                  decoration: const InputDecoration(
-                    labelText: 'Your learning state',
-                  ),
+                  value: _status,
+                  label: 'Your learning state',
                   items: [
                     for (final status in SkillStatus.values)
-                      DropdownMenuItem(
+                      DropdownMenuItem<SkillStatus>(
                         value: status,
                         child: Text(status.label),
                       ),

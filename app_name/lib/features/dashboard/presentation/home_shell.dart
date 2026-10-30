@@ -27,6 +27,7 @@ import '../../evidence/presentation/evidence_library_screen.dart';
 import '../../profile/data/profile_repository.dart';
 import '../../profile/domain/profile.dart';
 import '../../profile/presentation/profile_background_screen.dart';
+import '../../profile/presentation/profile_overview_screen.dart';
 import 'profile_completion_reminder.dart';
 import '../../skills/data/skill_repository.dart';
 import '../../skills/presentation/skills_screen.dart';
@@ -47,7 +48,7 @@ class HomeShell extends StatefulWidget {
     this.profileAccountEmail,
   });
 
-  final VoidCallback? onSignOut;
+  final Future<void> Function()? onSignOut;
   final ProjectRepository? projectRepository;
   final SkillRepository? skillRepository;
   final PortfolioRecordRepository? portfolioRecordRepository;
@@ -72,8 +73,93 @@ class _HomeShellState extends State<HomeShell> {
     if (index == 0) _homeKey.currentState?._reloadHomeData();
   }
 
+  Future<void> _openProfileOverview() async {
+    final repository = widget.profileRepository;
+    final userId = widget.profileUserId;
+    if (repository == null || userId == null) return;
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileOverviewScreen(
+          repository: repository,
+          userId: userId,
+          skillRepository: widget.skillRepository,
+          accountEmail: widget.profileAccountEmail,
+          onSignOut: widget.onSignOut,
+          onOpenSkills: () {
+            Navigator.of(context).pop();
+            _selectDestination(2);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPortfolioPreview() => PortfolioPreviewScreen(
+    repository: widget.portfolioContentRepository,
+    userId: widget.profileUserId,
+    onBack: () => _selectDestination(0),
+    onEditProfile: () {
+      if (widget.profileRepository == null || widget.profileUserId == null) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ProfileBackgroundScreen(
+            repository: widget.profileRepository!,
+            userId: widget.profileUserId!,
+            accountEmail: widget.profileAccountEmail,
+          ),
+        ),
+      );
+    },
+    onOpenProjects: () => _selectDestination(1),
+    onOpenSkills: () => _selectDestination(2),
+    onOpenRecord: (type) async {
+      final repository = widget.portfolioRecordRepository;
+      if (repository == null) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              PortfolioRecordsScreen(repository: repository, initialType: type),
+        ),
+      );
+    },
+    onOpenEvidence: () async {
+      final repository = widget.evidenceRepository;
+      if (repository == null) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => EvidenceLibraryScreen(
+            repository: repository,
+            filePicker:
+                widget.evidenceFilePicker ?? PlatformEvidenceFilePicker(),
+          ),
+        ),
+      );
+    },
+    onBuildSite: (content) => Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PortfolioSitePreview(
+          content: content,
+          userId: widget.profileUserId,
+          publicationRepository: widget.portfolioPublicationRepository,
+        ),
+      ),
+    ),
+    onBuildResume: (content) => Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ResumePreviewScreen(
+          content: ResumeContent.fromPortfolioContent(content),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final profileRepository = widget.profileRepository;
+    final profileUserId = widget.profileUserId;
     final pages = [
       _HomePage(
         key: _homeKey,
@@ -87,7 +173,9 @@ class _HomeShellState extends State<HomeShell> {
         evidenceRepository: widget.evidenceRepository,
         profileRepository: widget.profileRepository,
         profileUserId: widget.profileUserId,
-        onSignOut: widget.onSignOut,
+        onSignOut: widget.onSignOut == null
+            ? null
+            : () => unawaited(widget.onSignOut!()),
         onOpenCredentials: widget.portfolioRecordRepository == null
             ? null
             : () async => Navigator.of(context).push(
@@ -119,18 +207,10 @@ class _HomeShellState extends State<HomeShell> {
                   ),
                 ),
               ),
-        onEditProfile:
+        onOpenProfile:
             widget.profileRepository == null || widget.profileUserId == null
             ? null
-            : () async => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => ProfileBackgroundScreen(
-                    repository: widget.profileRepository!,
-                    userId: widget.profileUserId!,
-                    accountEmail: widget.profileAccountEmail,
-                  ),
-                ),
-              ),
+            : _openProfileOverview,
       ),
       if (widget.projectRepository case final repository?)
         ProjectsScreen(repository: repository)
@@ -145,7 +225,9 @@ class _HomeShellState extends State<HomeShell> {
               'Start with a project you can explain clearly. Project entry is the next feature to add.',
           iconColor: AppColors.deepNavy,
           iconBackground: AppColors.indigoContainer,
-          onSignOut: widget.onSignOut,
+          onSignOut: widget.onSignOut == null
+              ? null
+              : () => unawaited(widget.onSignOut!()),
         ),
       if (widget.skillRepository case final repository?)
         SkillsScreen(
@@ -163,71 +245,37 @@ class _HomeShellState extends State<HomeShell> {
               'Add projects first, then connect the skills you used. Skill tracking is coming in a later step.',
           iconColor: AppColors.indigo,
           iconBackground: AppColors.indigoContainer,
+          onSignOut: widget.onSignOut == null
+              ? null
+              : () => unawaited(widget.onSignOut!()),
+        ),
+      _buildPortfolioPreview(),
+      if (profileRepository != null &&
+          profileUserId != null &&
+          profileUserId.isNotEmpty)
+        ProfileOverviewScreen(
+          repository: profileRepository,
+          userId: profileUserId,
+          skillRepository: widget.skillRepository,
+          accountEmail: widget.profileAccountEmail,
           onSignOut: widget.onSignOut,
+          onOpenSkills: () => _selectDestination(2),
+        )
+      else
+        _EmptyDestinationPage(
+          icon: Icons.person_outline,
+          title: 'Profile',
+          heading: 'Your profile is not available',
+          description:
+              'Your profile details will appear here once your account is connected.',
+          nextStep:
+              'Sign in again or refresh your account to load your profile.',
+          iconColor: AppColors.deepNavy,
+          iconBackground: AppColors.indigoContainer,
+          onSignOut: widget.onSignOut == null
+              ? null
+              : () => unawaited(widget.onSignOut!()),
         ),
-      PortfolioPreviewScreen(
-        repository: widget.portfolioContentRepository,
-        userId: widget.profileUserId,
-        onBack: () => _selectDestination(0),
-        onEditProfile: () {
-          if (widget.profileRepository == null ||
-              widget.profileUserId == null) {
-            return;
-          }
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ProfileBackgroundScreen(
-                repository: widget.profileRepository!,
-                userId: widget.profileUserId!,
-                accountEmail: widget.profileAccountEmail,
-              ),
-            ),
-          );
-        },
-        onOpenProjects: () => _selectDestination(1),
-        onOpenSkills: () => _selectDestination(2),
-        onOpenRecord: (type) async {
-          final repository = widget.portfolioRecordRepository;
-          if (repository == null) return;
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => PortfolioRecordsScreen(
-                repository: repository,
-                initialType: type,
-              ),
-            ),
-          );
-        },
-        onOpenEvidence: () async {
-          final repository = widget.evidenceRepository;
-          if (repository == null) return;
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => EvidenceLibraryScreen(
-                repository: repository,
-                filePicker:
-                    widget.evidenceFilePicker ?? PlatformEvidenceFilePicker(),
-              ),
-            ),
-          );
-        },
-        onBuildSite: (content) => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => PortfolioSitePreview(
-              content: content,
-              userId: widget.profileUserId,
-              publicationRepository: widget.portfolioPublicationRepository,
-            ),
-          ),
-        ),
-        onBuildResume: (content) => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => ResumePreviewScreen(
-              content: ResumeContent.fromPortfolioContent(content),
-            ),
-          ),
-        ),
-      ),
     ];
 
     final wideLayout = MediaQuery.sizeOf(context).width >= 900;
@@ -236,52 +284,106 @@ class _HomeShellState extends State<HomeShell> {
         icon: Icon(Icons.home_outlined),
         selectedIcon: Icon(Icons.home),
         label: 'Home',
+        tooltip: 'Home',
       ),
       NavigationDestination(
         icon: Icon(Icons.folder_outlined),
         selectedIcon: Icon(Icons.folder_open),
         label: 'Projects',
+        tooltip: 'Projects',
       ),
       NavigationDestination(
         icon: Icon(Icons.lightbulb_outline),
         selectedIcon: Icon(Icons.lightbulb),
         label: 'Skills',
+        tooltip: 'Skills',
       ),
       NavigationDestination(
         icon: Icon(Icons.public_outlined),
         selectedIcon: Icon(Icons.public),
         label: 'Portfolio',
+        tooltip: 'Portfolio',
+      ),
+      NavigationDestination(
+        icon: Icon(Icons.person_outline),
+        selectedIcon: Icon(Icons.person),
+        label: 'Profile',
+        tooltip: 'Profile',
       ),
     ];
+    final bottomSafeInset = MediaQuery.viewPaddingOf(context).bottom;
+    const navigationHeight = 64.0;
+    const navigationBottomSpacing = 12.0;
     return Scaffold(
-      body: Row(
+      body: Stack(
+        key: const ValueKey('home-shell-body'),
         children: [
-          if (wideLayout)
-            NavigationRail(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _selectDestination,
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final destination in destinations)
-                  NavigationRailDestination(
-                    icon: destination.icon,
-                    selectedIcon: destination.selectedIcon,
-                    label: Text(destination.label),
+          Positioned.fill(
+            child: Row(
+              children: [
+                if (wideLayout)
+                  NavigationRail(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _selectDestination,
+                    labelType: NavigationRailLabelType.all,
+                    destinations: [
+                      for (final destination in destinations)
+                        NavigationRailDestination(
+                          icon: destination.icon,
+                          selectedIcon: destination.selectedIcon,
+                          label: Text(destination.label),
+                        ),
+                    ],
                   ),
+                Expanded(
+                  child: IndexedStack(index: _selectedIndex, children: pages),
+                ),
               ],
             ),
-          Expanded(
-            child: IndexedStack(index: _selectedIndex, children: pages),
           ),
+          if (!wideLayout)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: bottomSafeInset + navigationBottomSpacing,
+              child: Center(
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      key: const ValueKey('floating-bottom-navigation'),
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: AppColors.cloudWhite,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.deepNavy.withValues(alpha: .14),
+                            blurRadius: 22,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: NavigationBar(
+                        height: navigationHeight,
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        indicatorColor: AppColors.indigoContainer,
+                        labelBehavior:
+                            NavigationDestinationLabelBehavior.alwaysHide,
+                        selectedIndex: _selectedIndex,
+                        onDestinationSelected: _selectDestination,
+                        destinations: destinations,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
-      bottomNavigationBar: wideLayout
-          ? null
-          : NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _selectDestination,
-              destinations: destinations,
-            ),
     );
   }
 }
@@ -300,7 +402,7 @@ class _HomePage extends StatefulWidget {
     this.onSignOut,
     this.profileRepository,
     this.profileUserId,
-    this.onEditProfile,
+    this.onOpenProfile,
     this.onOpenCredentials,
     this.onOpenAchievements,
     this.onOpenEvidence,
@@ -317,7 +419,7 @@ class _HomePage extends StatefulWidget {
   final ProfileBackgroundRepository? profileRepository;
   final String? profileUserId;
   final VoidCallback? onSignOut;
-  final Future<void> Function()? onEditProfile;
+  final Future<void> Function()? onOpenProfile;
   final Future<void> Function()? onOpenCredentials;
   final Future<void> Function()? onOpenAchievements;
   final Future<void> Function()? onOpenEvidence;
@@ -499,7 +601,8 @@ class _HomePageState extends State<_HomePage> {
                       pageGutter,
                       18,
                       pageGutter,
-                      32,
+                      AppTheme.floatingNavigationContentInset +
+                          MediaQuery.viewPaddingOf(context).bottom,
                     ),
                     children: [
                       _BrandHeader(
@@ -522,7 +625,7 @@ class _HomePageState extends State<_HomePage> {
                                 !profileSnapshot.hasError,
                             hasError: profileSnapshot.hasError,
                             onOpenProfile: () => unawaited(
-                              _openAndRefresh(widget.onEditProfile),
+                              _openAndRefresh(widget.onOpenProfile),
                             ),
                             onRetry: _reloadProfile,
                           ),
@@ -572,7 +675,7 @@ class _HomePageState extends State<_HomePage> {
                                 !profileSnapshot.hasError,
                             hasError: profileSnapshot.hasError,
                             onOpenProfile: () => unawaited(
-                              _openAndRefresh(widget.onEditProfile),
+                              _openAndRefresh(widget.onOpenProfile),
                             ),
                             onRetry: _reloadProfile,
                           ),
@@ -625,9 +728,9 @@ class _HomePageState extends State<_HomePage> {
   Widget _buildProfileAvatar(ProfileBackground? profile) {
     final displayName = profile?.displayName ?? '';
     final photoUrlFuture = _signedPhotoUrl(profile);
-    final onTap = widget.onEditProfile == null
+    final onTap = widget.onOpenProfile == null
         ? null
-        : () => unawaited(_openAndRefresh(widget.onEditProfile));
+        : () => unawaited(_openAndRefresh(widget.onOpenProfile));
     if (photoUrlFuture == null) {
       return HomeProfileAvatar(
         displayName: displayName,
@@ -1550,7 +1653,13 @@ class _EmptyDestinationPage extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppTheme.contentMaxWidth),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              18,
+              24,
+              AppTheme.floatingNavigationContentInset +
+                  MediaQuery.viewPaddingOf(context).bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

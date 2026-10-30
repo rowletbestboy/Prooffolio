@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/portfolio_publication_repository.dart';
 import '../data/portfolio_site_generator.dart';
@@ -29,12 +32,23 @@ class PortfolioSitePreview extends StatefulWidget {
 
 class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
   late PortfolioSelection _selection;
-  late PortfolioSiteBundle? _bundle;
+  PortfolioSiteBundle? _bundle;
   Object? _generationError;
+  int _generationRevision = 0;
+  bool _generating = true;
   PortfolioPublication? _publication;
   Object? _publicationError;
   bool _loadingPublication = false;
   bool _publishing = false;
+  bool _isMobilePreview = false;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _selectionOptionsKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -55,14 +69,16 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
     try {
       final publication = await repository.loadStatus(userId);
       if (!mounted) return;
+      final restorePublishedSelection = publication?.isPublished == true;
       setState(() {
         _publication = publication;
         _loadingPublication = false;
-        if (publication?.isPublished == true) {
+        if (restorePublishedSelection) {
           _selection = publication!.selection;
-          _regenerate();
+          _generating = true;
         }
       });
+      if (restorePublishedSelection) _regenerate();
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -75,27 +91,46 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
   void _updateSelection(PortfolioSelection selection) {
     setState(() {
       _selection = selection;
-      _regenerate();
+      _generating = true;
     });
+    _regenerate();
   }
 
   void _regenerate() {
+    final revision = ++_generationRevision;
+    final selection = _selection;
+    unawaited(_generateBundle(revision, selection));
+  }
+
+  Future<void> _generateBundle(
+    int revision,
+    PortfolioSelection selection,
+  ) async {
     try {
-      _bundle = PortfolioSiteGenerator.generate(
+      final bundle = await PortfolioSiteGenerator.generate(
         widget.content,
-        _selection,
+        selection,
         PortfolioTemplate.light,
       );
-      _generationError = null;
+      if (!mounted || revision != _generationRevision) return;
+      setState(() {
+        _bundle = bundle;
+        _generationError = null;
+        _generating = false;
+      });
     } on Object catch (error) {
-      _bundle = null;
-      _generationError = error;
+      if (!mounted || revision != _generationRevision) return;
+      setState(() {
+        _bundle = null;
+        _generationError = error;
+        _generating = false;
+      });
     }
   }
 
   Future<void> _download() async {
     final bundle = _bundle;
-    if (bundle == null) return;
+    if (bundle == null || _generating) return;
     try {
       final saved = await FilePicker.saveFile(
         fileName: 'prooffolio-portfolio.zip',
@@ -131,6 +166,7 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
         userId == null ||
         userId.isEmpty ||
         bundle == null ||
+        _generating ||
         _loadingPublication ||
         _publishing) {
       return;
@@ -282,6 +318,24 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _editPortfolio() async {
+    if (!_scrollController.hasClients) return;
+    await _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+    if (!mounted) return;
+    final target = _selectionOptionsKey.currentContext;
+    if (target == null || !target.mounted) return;
+    await Scrollable.ensureVisible(
+      target,
+      alignment: 0.05,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
+
   void _toggleSet(
     Set<String> selected,
     String id,
@@ -400,7 +454,9 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
                 label: const Text('Copy website URL'),
               ),
               FilledButton.icon(
-                onPressed: configured && !_publishing ? _publish : null,
+                onPressed: configured && !_publishing && !_generating
+                    ? _publish
+                    : null,
                 icon: const Icon(Icons.publish_outlined),
                 label: const Text('Update published website'),
               ),
@@ -418,11 +474,7 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
             'download your website ZIP.',
           )
         else
-          FilledButton.icon(
-            onPressed: _publishing || _bundle == null ? null : _publish,
-            icon: const Icon(Icons.publish_outlined),
-            label: const Text('Publish website'),
-          ),
+          const Text('Your website is ready to publish.'),
       ],
     );
   }
@@ -439,283 +491,592 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
         photoPath.isNotEmpty &&
         widget.content.photoBytes.isAvailable &&
         widget.content.photoBytes.value != null;
+    final canPublish =
+        widget.publicationRepository != null &&
+        widget.userId != null &&
+        widget.userId!.isNotEmpty;
+    final primaryActionLabel = canPublish
+        ? _publication?.isPublished == true
+              ? 'Update Portfolio'
+              : 'Publish Portfolio'
+        : 'Download Website';
+    final primaryActionIcon = canPublish
+        ? Icons.publish_outlined
+        : Icons.download_outlined;
 
     return Scaffold(
-      appBar: const AppPageAppBar(title: 'Website preview'),
-      body: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Text(
-                'Choose what to include',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'All saved profile and work details are selected initially. '
-                'Uncheck anything you do not want in your website. You control '
-                'who sees downloaded files; live publishing always requires '
-                'review and confirmation.',
-              ),
-              const SizedBox(height: 20),
-              _SelectionCard(
-                title: 'Profile',
-                children: [
-                  _profileChoice(
-                    label: 'Display name',
-                    value: profile?.displayName ?? '',
-                    selected: _selection.includeDisplayName,
-                    onChanged: (value) => _updateSelection(
-                      _selection.copyWith(includeDisplayName: value),
-                    ),
+      appBar: const AppPageAppBar(title: 'Portfolio Preview'),
+      body: SizedBox.expand(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(20),
+              children: [
+                _portfolioSummaryCard(profile),
+                const SizedBox(height: 24),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final heading = Text(
+                      'Website preview',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    );
+                    final toggle = SegmentedButton<String>(
+                      key: const ValueKey('portfolio-preview-mode-toggle'),
+                      segments: const [
+                        ButtonSegment(
+                          value: 'website',
+                          icon: Icon(Icons.desktop_windows_outlined),
+                          label: Text('Website'),
+                        ),
+                        ButtonSegment(
+                          value: 'mobile',
+                          icon: Icon(Icons.smartphone_outlined),
+                          label: Text('Mobile'),
+                        ),
+                      ],
+                      selected: {_isMobilePreview ? 'mobile' : 'website'},
+                      onSelectionChanged: (selection) => setState(
+                        () => _isMobilePreview = selection.single == 'mobile',
+                      ),
+                    );
+                    if (constraints.maxWidth < 380) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          heading,
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: toggle,
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: heading),
+                        toggle,
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.indigoContainer,
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  _profileChoice(
-                    label: 'Headline',
-                    value: profile?.headline ?? '',
-                    selected: _selection.includeHeadline,
-                    onChanged: (value) => _updateSelection(
-                      _selection.copyWith(includeHeadline: value),
-                    ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, color: AppColors.indigo),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Review how your portfolio will look. Changes stay '
+                          'private until you publish.',
+                        ),
+                      ),
+                    ],
                   ),
-                  _profileChoice(
-                    label: 'Role or occupation',
-                    value: profile?.occupationTitle ?? '',
-                    selected: _selection.includeOccupationTitle,
-                    onChanged: (value) => _updateSelection(
-                      _selection.copyWith(includeOccupationTitle: value),
+                ),
+                const SizedBox(height: 24),
+                _buildLivePreview(html),
+                if (_generationError case final error?) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'The selected website could not be generated: $error',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                  ),
-                  _profileChoice(
-                    label: 'Introduction',
-                    value: profile?.bio ?? '',
-                    selected: _selection.includeBio,
-                    onChanged: (value) => _updateSelection(
-                      _selection.copyWith(includeBio: value),
-                    ),
-                  ),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _selection.includePhoto,
-                    onChanged: photoCanBeIncluded
-                        ? (value) => _updateSelection(
-                            _selection.copyWith(includePhoto: value!),
-                          )
-                        : null,
-                    title: const Text('Profile photo'),
-                    subtitle: Text(
-                      photoCanBeIncluded
-                          ? 'Copy a selected image into the website files.'
-                          : 'No downloadable profile photo is available.',
-                    ),
-                    controlAffinity: ListTileControlAffinity.leading,
                   ),
                 ],
-              ),
-              _SelectionCard(
-                title: 'Contact',
-                children: [
-                  if (profile == null)
-                    const ListTile(
-                      title: Text('Profile details could not be loaded.'),
-                    )
-                  else ...[
-                    _contactChoice(
-                      label: 'Email',
-                      value: profile.contactEmail,
-                      selected: _selection.includeEmail,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includeEmail: value),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _bundle == null || _generating ? null : _download,
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Download website ZIP'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _readinessCard(),
+                const SizedBox(height: 20),
+                KeyedSubtree(
+                  key: _selectionOptionsKey,
+                  child: _SelectionCard(
+                    title: 'Choose what to include',
+                    children: [
+                      const Text(
+                        'All saved profile and work details are selected '
+                        'initially. Uncheck anything you do not want on your '
+                        'website.',
                       ),
-                    ),
-                    _contactChoice(
-                      label: 'Phone',
-                      value: profile.phone,
-                      selected: _selection.includePhone,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includePhone: value),
+                      const SizedBox(height: 12),
+                      _SelectionCard(
+                        title: 'Profile',
+                        children: [
+                          _profileChoice(
+                            label: 'Display name',
+                            value: profile?.displayName ?? '',
+                            selected: _selection.includeDisplayName,
+                            onChanged: (value) => _updateSelection(
+                              _selection.copyWith(includeDisplayName: value),
+                            ),
+                          ),
+                          _profileChoice(
+                            label: 'Headline',
+                            value: profile?.headline ?? '',
+                            selected: _selection.includeHeadline,
+                            onChanged: (value) => _updateSelection(
+                              _selection.copyWith(includeHeadline: value),
+                            ),
+                          ),
+                          _profileChoice(
+                            label: 'Role or occupation',
+                            value: profile?.occupationTitle ?? '',
+                            selected: _selection.includeOccupationTitle,
+                            onChanged: (value) => _updateSelection(
+                              _selection.copyWith(
+                                includeOccupationTitle: value,
+                              ),
+                            ),
+                          ),
+                          _profileChoice(
+                            label: 'Introduction',
+                            value: profile?.bio ?? '',
+                            selected: _selection.includeBio,
+                            onChanged: (value) => _updateSelection(
+                              _selection.copyWith(includeBio: value),
+                            ),
+                          ),
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: _selection.includePhoto,
+                            onChanged: photoCanBeIncluded
+                                ? (value) => _updateSelection(
+                                    _selection.copyWith(includePhoto: value!),
+                                  )
+                                : null,
+                            title: const Text('Profile photo'),
+                            subtitle: Text(
+                              photoCanBeIncluded
+                                  ? 'Copy a selected image into the website files.'
+                                  : 'No downloadable profile photo is available.',
+                            ),
+                            controlAffinity: ListTileControlAffinity.leading,
+                          ),
+                        ],
                       ),
-                    ),
-                    _contactChoice(
-                      label: 'GitHub',
-                      value: profile.githubUrl,
-                      selected: _selection.includeGithub,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includeGithub: value),
+                      _SelectionCard(
+                        title: 'Contact',
+                        children: [
+                          if (profile == null)
+                            const ListTile(
+                              title: Text(
+                                'Profile details could not be loaded.',
+                              ),
+                            )
+                          else ...[
+                            _contactChoice(
+                              label: 'Email',
+                              value: profile.contactEmail,
+                              selected: _selection.includeEmail,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includeEmail: value),
+                              ),
+                            ),
+                            _contactChoice(
+                              label: 'Phone',
+                              value: profile.phone,
+                              selected: _selection.includePhone,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includePhone: value),
+                              ),
+                            ),
+                            _contactChoice(
+                              label: 'GitHub',
+                              value: profile.githubUrl,
+                              selected: _selection.includeGithub,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includeGithub: value),
+                              ),
+                            ),
+                            _contactChoice(
+                              label: 'LinkedIn',
+                              value: profile.linkedInUrl,
+                              selected: _selection.includeLinkedIn,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includeLinkedIn: value),
+                              ),
+                            ),
+                            _contactChoice(
+                              label: 'Upwork',
+                              value: profile.upworkUrl,
+                              selected: _selection.includeUpwork,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includeUpwork: value),
+                              ),
+                            ),
+                            _contactChoice(
+                              label: 'JobStreet',
+                              value: profile.jobstreetUrl,
+                              selected: _selection.includeJobstreet,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includeJobstreet: value),
+                              ),
+                            ),
+                            _contactChoice(
+                              label: 'WhatsApp',
+                              value: profile.whatsAppNumber,
+                              selected: _selection.includeWhatsApp,
+                              onChanged: (value) => _updateSelection(
+                                _selection.copyWith(includeWhatsApp: value),
+                              ),
+                            ),
+                            if (profile.additionalLinks.isNotEmpty)
+                              CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                value: _selection.includeAdditionalLinks,
+                                onChanged: (value) => _updateSelection(
+                                  _selection.copyWith(
+                                    includeAdditionalLinks: value!,
+                                  ),
+                                ),
+                                title: const Text('Additional labeled links'),
+                                subtitle: Text(
+                                  profile.additionalLinks
+                                      .map(
+                                        (link) => '${link.label}: ${link.url}',
+                                      )
+                                      .join('\n'),
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                              ),
+                          ],
+                        ],
                       ),
-                    ),
-                    _contactChoice(
-                      label: 'LinkedIn',
-                      value: profile.linkedInUrl,
-                      selected: _selection.includeLinkedIn,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includeLinkedIn: value),
-                      ),
-                    ),
-                    _contactChoice(
-                      label: 'Upwork',
-                      value: profile.upworkUrl,
-                      selected: _selection.includeUpwork,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includeUpwork: value),
-                      ),
-                    ),
-                    _contactChoice(
-                      label: 'JobStreet',
-                      value: profile.jobstreetUrl,
-                      selected: _selection.includeJobstreet,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includeJobstreet: value),
-                      ),
-                    ),
-                    _contactChoice(
-                      label: 'WhatsApp',
-                      value: profile.whatsAppNumber,
-                      selected: _selection.includeWhatsApp,
-                      onChanged: (value) => _updateSelection(
-                        _selection.copyWith(includeWhatsApp: value),
-                      ),
-                    ),
-                    if (profile.additionalLinks.isNotEmpty)
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        value: _selection.includeAdditionalLinks,
-                        onChanged: (value) => _updateSelection(
-                          _selection.copyWith(includeAdditionalLinks: value!),
+                      _SelectionCard(
+                        title: 'Projects',
+                        children: _recordChoices(
+                          source: widget.content.projects,
+                          emptyMessage: 'No projects saved.',
+                          idFor: (record) => record.id,
+                          titleFor: (record) => record.title,
+                          selectedIds: _selection.projectIds,
+                          onChanged: (ids) => _updateSelection(
+                            _selection.copyWith(projectIds: ids),
+                          ),
                         ),
-                        title: const Text('Additional labeled links'),
-                        subtitle: Text(
-                          profile.additionalLinks
-                              .map((link) => '${link.label}: ${link.url}')
-                              .join('\n'),
-                        ),
-                        controlAffinity: ListTileControlAffinity.leading,
                       ),
-                  ],
+                      _SelectionCard(
+                        title: 'Skills',
+                        children: _recordChoices(
+                          source: widget.content.skills,
+                          emptyMessage: 'No skills saved.',
+                          idFor: (record) => record.id,
+                          titleFor: (record) => record.name,
+                          selectedIds: _selection.skillIds,
+                          onChanged: (ids) => _updateSelection(
+                            _selection.copyWith(skillIds: ids),
+                          ),
+                        ),
+                      ),
+                      _SelectionCard(
+                        title: 'Education',
+                        children: _recordChoices(
+                          source: widget.content.education,
+                          emptyMessage: 'No education saved.',
+                          idFor: (record) => record.id,
+                          titleFor: (record) => record.title,
+                          selectedIds: _selection.educationIds,
+                          onChanged: (ids) => _updateSelection(
+                            _selection.copyWith(educationIds: ids),
+                          ),
+                        ),
+                      ),
+                      _SelectionCard(
+                        title: 'Experience',
+                        children: _recordChoices(
+                          source: widget.content.experience,
+                          emptyMessage: 'No experience saved.',
+                          idFor: (record) => record.id,
+                          titleFor: (record) => record.title,
+                          selectedIds: _selection.experienceIds,
+                          onChanged: (ids) => _updateSelection(
+                            _selection.copyWith(experienceIds: ids),
+                          ),
+                        ),
+                      ),
+                      _SelectionCard(
+                        title: 'Certifications',
+                        children: _recordChoices(
+                          source: widget.content.certifications,
+                          emptyMessage: 'No certifications saved.',
+                          idFor: (record) => record.id,
+                          titleFor: (record) => record.title,
+                          selectedIds: _selection.certificationIds,
+                          onChanged: (ids) => _updateSelection(
+                            _selection.copyWith(certificationIds: ids),
+                          ),
+                        ),
+                      ),
+                      _SelectionCard(
+                        title: 'Achievements',
+                        children: _recordChoices(
+                          source: widget.content.achievements,
+                          emptyMessage: 'No achievements saved.',
+                          idFor: (record) => record.id,
+                          titleFor: (record) => record.title,
+                          selectedIds: _selection.achievementIds,
+                          onChanged: (ids) => _updateSelection(
+                            _selection.copyWith(achievementIds: ids),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'The published website uses one responsive design and '
+                        'includes its own light/dark theme toggle.',
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.publicationRepository != null &&
+                    widget.userId != null) ...[
+                  const SizedBox(height: 12),
+                  _publicationControls(),
                 ],
-              ),
-              _SelectionCard(
-                title: 'Projects',
-                children: _recordChoices(
-                  source: widget.content.projects,
-                  emptyMessage: 'No projects saved.',
-                  idFor: (record) => record.id,
-                  titleFor: (record) => record.title,
-                  selectedIds: _selection.projectIds,
-                  onChanged: (ids) =>
-                      _updateSelection(_selection.copyWith(projectIds: ids)),
-                ),
-              ),
-              _SelectionCard(
-                title: 'Skills',
-                children: _recordChoices(
-                  source: widget.content.skills,
-                  emptyMessage: 'No skills saved.',
-                  idFor: (record) => record.id,
-                  titleFor: (record) => record.name,
-                  selectedIds: _selection.skillIds,
-                  onChanged: (ids) =>
-                      _updateSelection(_selection.copyWith(skillIds: ids)),
-                ),
-              ),
-              _SelectionCard(
-                title: 'Education',
-                children: _recordChoices(
-                  source: widget.content.education,
-                  emptyMessage: 'No education saved.',
-                  idFor: (record) => record.id,
-                  titleFor: (record) => record.title,
-                  selectedIds: _selection.educationIds,
-                  onChanged: (ids) =>
-                      _updateSelection(_selection.copyWith(educationIds: ids)),
-                ),
-              ),
-              _SelectionCard(
-                title: 'Experience',
-                children: _recordChoices(
-                  source: widget.content.experience,
-                  emptyMessage: 'No experience saved.',
-                  idFor: (record) => record.id,
-                  titleFor: (record) => record.title,
-                  selectedIds: _selection.experienceIds,
-                  onChanged: (ids) =>
-                      _updateSelection(_selection.copyWith(experienceIds: ids)),
-                ),
-              ),
-              _SelectionCard(
-                title: 'Certifications',
-                children: _recordChoices(
-                  source: widget.content.certifications,
-                  emptyMessage: 'No certifications saved.',
-                  idFor: (record) => record.id,
-                  titleFor: (record) => record.title,
-                  selectedIds: _selection.certificationIds,
-                  onChanged: (ids) => _updateSelection(
-                    _selection.copyWith(certificationIds: ids),
-                  ),
-                ),
-              ),
-              _SelectionCard(
-                title: 'Achievements',
-                children: _recordChoices(
-                  source: widget.content.achievements,
-                  emptyMessage: 'No achievements saved.',
-                  idFor: (record) => record.id,
-                  titleFor: (record) => record.title,
-                  selectedIds: _selection.achievementIds,
-                  onChanged: (ids) => _updateSelection(
-                    _selection.copyWith(achievementIds: ids),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'One responsive design, with a light/dark toggle on the published website.',
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _bundle == null ? null : _download,
-                icon: const Icon(Icons.download_outlined),
-                label: const Text('Download website ZIP'),
-              ),
-              if (widget.publicationRepository != null &&
-                  widget.userId != null) ...[
-                const SizedBox(height: 12),
-                _publicationControls(),
+                const SizedBox(height: 32),
               ],
-              if (_generationError case final error?) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'The selected website could not be generated: $error',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 24),
-              Text(
-                'Live preview',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (html case final previewHtml?)
-                SizedBox(
-                  height: 700,
-                  child:
-                      widget.previewBuilder?.call(context, previewHtml) ??
-                      SitePreviewSurface(html: previewHtml),
-                )
-              else
-                const SizedBox(
-                  height: 220,
-                  child: Center(
-                    child: Text(
-                      'Select valid content to preview your website.',
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            border: const Border(top: BorderSide(color: AppColors.lightSlate)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+          child: Align(
+            heightFactor: 1,
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 920),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _editPortfolio,
+                      icon: const Icon(Icons.tune_outlined),
+                      label: const Text('Edit Portfolio'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed:
+                          _bundle == null ||
+                              _generating ||
+                              _publishing ||
+                              (canPublish && _loadingPublication)
+                          ? null
+                          : canPublish
+                          ? _publish
+                          : _download,
+                      icon: Icon(primaryActionIcon),
+                      label: Text(
+                        primaryActionLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _portfolioSummaryCard(PortfolioProfile? profile) => Card(
+    color: AppColors.deepNavy,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: AppColors.white.withValues(alpha: 0.14),
+            child: const Icon(
+              Icons.language_outlined,
+              color: AppColors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Portfolio',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  profile?.displayName.trim().isNotEmpty == true
+                      ? profile!.displayName
+                      : 'Website draft',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.white.withValues(alpha: 0.82),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.tealAccent.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _publication?.isPublished == true ? 'LIVE' : 'DRAFT',
+              style: TextStyle(
+                color: AppColors.tealAccent,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildLivePreview(String? html) {
+    final previewHtml = html;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Live preview', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceSubtle,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.lightSlate),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = _isMobilePreview
+                  ? constraints.maxWidth.clamp(0, 375).toDouble()
+                  : constraints.maxWidth;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: width,
+                  height: _isMobilePreview ? 620 : 700,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(
+                      _isMobilePreview ? 24 : 12,
+                    ),
+                    border: Border.all(color: AppColors.lightSlate),
+                  ),
+                  child: previewHtml == null
+                      ? Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              _generating
+                                  ? 'Preparing your portfolio preview...'
+                                  : 'Select valid content to preview your website.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : widget.previewBuilder?.call(context, previewHtml) ??
+                            SitePreviewSurface(html: previewHtml),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _readinessCard() {
+    final suggestions = PortfolioReadiness.evaluate(widget.content);
+    final covered = suggestions
+        .where((suggestion) => suggestion.isCovered)
+        .length;
+    final progress = suggestions.isEmpty ? 0.0 : covered / suggestions.length;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Portfolio readiness',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 4),
+            Text('$covered of ${suggestions.length} areas covered'),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(8),
+              color: AppColors.indigo,
+              backgroundColor: AppColors.indigoContainer,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This checklist reflects saved content. Private evidence files '
+              'are never added to your public website.',
+            ),
+            const SizedBox(height: 8),
+            for (final suggestion in suggestions)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(
+                  suggestion.isCovered
+                      ? Icons.check_circle_outline
+                      : Icons.radio_button_unchecked,
+                  color: suggestion.isCovered
+                      ? AppColors.teal
+                      : AppColors.slateGray,
+                ),
+                title: Text(suggestion.label),
+                subtitle: Text(suggestion.explanation),
+              ),
+          ],
         ),
       ),
     );

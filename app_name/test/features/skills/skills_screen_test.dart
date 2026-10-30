@@ -66,6 +66,115 @@ void main() {
     expect(iconTile.backgroundColor, AppColors.tealContainer);
   });
 
+  testWidgets('skills can be filtered by category and searched', (
+    WidgetTester tester,
+  ) async {
+    final skills = _FakeSkillRepository(
+      initialSkills: [
+        _skill(
+          id: 'figma',
+          name: 'Figma',
+          category: SkillCategory.artsMediaDesign,
+          status: SkillStatus.applied,
+          projectTitles: const ['Campus planner'],
+        ),
+        _skill(
+          id: 'flutter',
+          name: 'Flutter',
+          category: SkillCategory.technologyDigital,
+          status: SkillStatus.learning,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: SkillsScreen(
+          repository: skills,
+          projectRepository: _FakeProjectRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Figma'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Flutter'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Flutter'), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('skillCategoryFilter-artsMediaDesign')),
+    );
+    await tester.tap(
+      find.byKey(const Key('skillCategoryFilter-artsMediaDesign')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Figma'), findsOneWidget);
+    expect(find.text('Flutter'), findsNothing);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, 1200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('skillSearchToggle')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('skillSearchField')), 'figma');
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Figma'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Figma'), findsOneWidget);
+  });
+
+  testWidgets('skills are grouped with project-link counts from saved data', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: SkillsScreen(
+          repository: _FakeSkillRepository(
+            initialSkills: [
+              _skill(
+                id: 'figma',
+                name: 'Figma',
+                category: SkillCategory.artsMediaDesign,
+                status: SkillStatus.applied,
+                projectTitles: const ['Campus planner'],
+              ),
+              _skill(
+                id: 'flutter',
+                name: 'Flutter',
+                category: SkillCategory.technologyDigital,
+                status: SkillStatus.learning,
+              ),
+            ],
+          ),
+          projectRepository: _FakeProjectRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 skills'), findsOneWidget);
+    expect(find.text('1 linked to projects'), findsOneWidget);
+    expect(
+      find.byKey(const Key('skillCategoryGroup-artsMediaDesign')),
+      findsOneWidget,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('skillCategoryGroup-technologyDigital')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.byKey(const Key('skillCategoryGroup-technologyDigital')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('user can create a skill and link it to a project', (
     WidgetTester tester,
   ) async {
@@ -89,6 +198,16 @@ void main() {
         matching: find.byType(AppBrandMark),
       ),
       findsOneWidget,
+    );
+    final statusField = tester.widget<DropdownButton<SkillStatus>>(
+      find.descendant(
+        of: find.byKey(const Key('skillStatusField')),
+        matching: find.byType(DropdownButton<SkillStatus>),
+      ),
+    );
+    expect(
+      statusField.borderRadius,
+      BorderRadius.circular(AppTheme.controlRadius),
     );
     final nameDecorator = tester.widget<InputDecorator>(
       find
@@ -123,6 +242,8 @@ void main() {
       ),
       findsWidgets,
     );
+    await tester.ensureVisible(find.byTooltip('Skill actions'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Skill actions'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete skill'));
@@ -171,7 +292,10 @@ Project _project() {
 }
 
 class _FakeSkillRepository implements SkillRepository {
-  final List<Skill> skills = [];
+  _FakeSkillRepository({List<Skill> initialSkills = const []})
+    : skills = List.of(initialSkills);
+
+  final List<Skill> skills;
   int _nextId = 1;
 
   @override
@@ -210,6 +334,24 @@ class _FakeSkillRepository implements SkillRepository {
     skills.removeWhere((skill) => skill.id == id);
   }
 }
+
+Skill _skill({
+  required String id,
+  required String name,
+  required SkillCategory category,
+  required SkillStatus status,
+  List<String> projectTitles = const [],
+}) => Skill(
+  id: id,
+  userId: 'user-1',
+  name: name,
+  category: category,
+  status: status,
+  projectIds: projectTitles.isEmpty ? const [] : const ['project-1'],
+  projectTitles: projectTitles,
+  createdAt: DateTime.utc(2026, 10, 20),
+  updatedAt: DateTime.utc(2026, 10, 20),
+);
 
 class _FakeProjectRepository implements ProjectRepository {
   final List<Project> projects = [];

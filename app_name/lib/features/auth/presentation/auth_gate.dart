@@ -119,6 +119,15 @@ class _AuthGateState extends State<AuthGate> {
           return ProfileSetupScreen(
             repository: _profiles,
             onComplete: () => _refreshProfile(),
+            initialDisplayName:
+                switch (user.userMetadata?['display_name']) {
+                  final String value => value,
+                  _ => '',
+                },
+            initialUsername: switch (user.userMetadata?['username']) {
+              final String value => value,
+              _ => '',
+            },
           );
         }
         final projects = SupabaseProjectRepository(widget.client);

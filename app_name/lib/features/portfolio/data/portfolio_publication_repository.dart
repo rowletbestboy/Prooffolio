@@ -225,12 +225,12 @@ class SupabasePortfolioPublicationRepository
       );
     }
 
-    final previewBundle = PortfolioSiteGenerator.generate(
+    final previewBundle = await PortfolioSiteGenerator.generate(
       previewContent,
       selection,
       template,
     );
-    final currentBundle = PortfolioSiteGenerator.generate(
+    final currentBundle = await PortfolioSiteGenerator.generate(
       currentContent,
       selection,
       template,
