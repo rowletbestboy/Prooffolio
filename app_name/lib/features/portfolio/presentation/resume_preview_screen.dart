@@ -2,9 +2,11 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/resume_exporter.dart';
 import '../domain/resume_content.dart';
 import '../domain/resume_layout.dart';
@@ -94,7 +96,7 @@ class _ResumePreviewScreenState extends State<ResumePreviewScreen> {
     final hasUnavailableSections =
         widget.content.unavailableSections.isNotEmpty;
     return Scaffold(
-      appBar: AppBar(title: const Text('Resume preview')),
+      appBar: const AppPageAppBar(title: 'Resume preview'),
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,
@@ -152,10 +154,29 @@ class _ResumePreviewScreenState extends State<ResumePreviewScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                _ResumeDocument(
-                  content: widget.content,
-                  layout: _layout,
-                  includePhoto: _includePhoto,
+                Text('PDF preview', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).width > 600 ? 860 : 620,
+                  child: PdfPreview(
+                    key: const Key('resumePdfPreview'),
+                    build: (_) => ResumeExporter.toPdf(
+                      widget.content,
+                      layout: _layout,
+                      includePhoto: _includePhoto,
+                    ),
+                    loadingWidget: const Center(
+                      child: Text('Preparing PDF preview...'),
+                    ),
+                    initialPageFormat: PdfPageFormat.a4,
+                    maxPageWidth: 620,
+                    allowPrinting: false,
+                    allowSharing: false,
+                    canChangeOrientation: false,
+                    canChangePageFormat: false,
+                    canDebug: false,
+                    useActions: false,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -189,138 +210,6 @@ class _ResumePreviewScreenState extends State<ResumePreviewScreen> {
   }
 }
 
-class _ResumeDocument extends StatelessWidget {
-  const _ResumeDocument({
-    required this.content,
-    required this.layout,
-    required this.includePhoto,
-  });
-
-  final ResumeContent content;
-  final ResumeLayout layout;
-  final bool includePhoto;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final photoBytes = layout == ResumeLayout.visual && includePhoto
-        ? content.photoBytes
-        : null;
-    return Card(
-      color: layout == ResumeLayout.visual
-          ? theme.colorScheme.surfaceContainerLow
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (photoBytes != null ||
-                content.displayName.isNotEmpty ||
-                content.headline.isNotEmpty)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (photoBytes != null)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.memory(
-                          photoBytes,
-                          key: const Key('resumePreviewPhoto'),
-                          width: 76,
-                          height: 76,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (content.displayName.isNotEmpty)
-                          SelectableText(
-                            content.displayName,
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              color: layout == ResumeLayout.visual
-                                  ? AppColors.deepNavy
-                                  : null,
-                            ),
-                          ),
-                        if (content.headline.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          SelectableText(
-                            content.headline,
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            for (final detail in content.contactDetails)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: SelectableText('${detail.label}: ${detail.value}'),
-              ),
-            if (content.summary.isNotEmpty) ...[
-              _ResumeHeading('Summary'),
-              SelectableText(content.summary),
-            ],
-            for (final section in content.sections) ...[
-              _ResumeHeading(section.heading),
-              for (final entry in section.entries) ...[
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: SelectableText(
-                    entry.title,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                if (entry.subtitle.isNotEmpty) SelectableText(entry.subtitle),
-                if (entry.dateRange.isNotEmpty) SelectableText(entry.dateRange),
-                if (entry.description.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: SelectableText(entry.description),
-                  ),
-              ],
-            ],
-            if (content.displayName.isEmpty &&
-                content.summary.isEmpty &&
-                content.contactDetails.isEmpty &&
-                content.sections.isEmpty)
-              const Text('Add profile and work details to build your resume.'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ResumeHeading extends StatelessWidget {
-  const _ResumeHeading(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: theme.textTheme.titleMedium),
-          const Divider(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
 class _UnavailableNotice extends StatelessWidget {
   const _UnavailableNotice({required this.sections});
 
@@ -329,7 +218,7 @@ class _UnavailableNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: Theme.of(context).colorScheme.errorContainer,
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(AppTheme.controlRadius),
     child: Padding(
       padding: const EdgeInsets.all(14),
       child: Text(

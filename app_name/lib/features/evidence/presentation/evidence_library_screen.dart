@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/evidence_repository.dart';
 import '../domain/evidence.dart';
 
@@ -200,7 +201,7 @@ class _EvidenceLibraryScreenState extends State<EvidenceLibraryScreen> {
   Widget build(BuildContext context) {
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: const Text('Evidence library')),
+      appBar: const AppPageAppBar(title: 'Evidence library'),
       body: FutureBuilder<_EvidenceData>(
         future: _dataFuture,
         builder: (context, snapshot) {

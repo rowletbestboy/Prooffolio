@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../../../core/widgets/app_icon_tile.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
@@ -57,7 +58,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final textTheme = Theme.of(context).textTheme;
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: const Text('Projects')),
+      appBar: const AppPageAppBar(title: 'Projects'),
       floatingActionButton: FutureBuilder<List<Project>>(
         future: _projectsFuture,
         builder: (context, snapshot) {

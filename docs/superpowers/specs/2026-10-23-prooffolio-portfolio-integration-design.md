@@ -9,11 +9,14 @@ integration target. The result should help a user turn truthful, saved profile
 and work records into a polished, employer-shareable portfolio website and
 reviewable resume exports.
 
-The accepted public portfolio concept is the visual direction: a composed
-personal introduction, editorial typography, selected project case studies,
-skills, and contact action, with a restrained green accent, responsive
-layout, and light/dark variants. It must feel intentionally designed rather
-than like a generic upload or quick static export.
+The user-approved generated-site template is the supplied one-page HTML
+portfolio: compact sticky navigation, prominent introduction, profile-at-a-
+glance card, project case studies, categorized skills, background, and contact
+details. Preserve its responsive structure, accessibility, copy controls, and
+visitor-operated light/dark toggle. The generator offers one template; do not
+add an app-side light/dark template selector. The user's sample text is
+reference content only and must be replaced with explicitly selected saved
+profile and work data.
 
 ## User-approved behavior
 
@@ -30,11 +33,12 @@ than like a generic upload or quick static export.
 - Users should be able to publish a live website and share its URL with
   employers.
 - The Portfolio workspace should include an objective content-coverage meter,
-  light and dark website previews, and a resume/CV builder with two styles:
+  one generated website preview with an in-page light/dark toggle, and a
+  resume/CV builder with two styles:
   text-first ATS-friendly and a standard photo layout. Both styles can export
   to PDF and DOCX.
-- The public portfolio concept shown in the brainstorming browser was approved
-  as the visual direction.
+- The user's supplied one-page HTML portfolio is the approved generated-site
+  direction and replaces the earlier brainstorming mockup.
 - Profile and work data stay private until the user explicitly reviews and
   selects what to publish. Approval of a profile photo as source material does
   not automatically publish it.
@@ -155,18 +159,21 @@ setup documentation together.
 - Make a private preview before publish available regardless of whether the
   user has a publication.
 
-### Employer-facing website templates and live publishing
+### Employer-facing website template and live publishing
 
-- Provide light and dark variants based on the approved mockup's composition
-  and level of polish, not sample personal details or generic filler.
+- Generate one theme-responsive page following the user's supplied HTML
+  structure. The website itself has a visitor-operated light/dark toggle;
+  Portfolio does not offer a separate theme/template choice.
+- Do not use the sample's personal details or generic filler content.
 - Use the selected profile image, name, headline, about text, contact/social
   links, skills, projects, certifications, achievements, education, and
   experience when chosen and present. Omit empty sections. Projects should
   receive clear title, summary, role/contribution, detail, and dates when those
   fields exist. Avoid claiming outcomes that the user did not save.
 - Support private preview with desktop and narrow/mobile layouts; respect
-  keyboard focus, readable contrast, and reduced motion. Use no third-party
-  scripts or externally hosted user content.
+  keyboard focus, readable contrast, and reduced motion. Keep generated assets
+  self-contained: no third-party scripts, remote fonts, or externally hosted
+  user content.
 - All text is escaped, generated anchors accept only safe HTTP(S) URLs, and
   IDs are used only for authenticated selection state, never public HTML.
 - Public photos are copied into the approved static bundle only when selected.
@@ -206,30 +213,28 @@ setup documentation together.
 
 ### Palette
 
-- Deep evergreen `#1D2927` for primary text.
-- Muted slate-green `#64716D` for secondary copy.
-- Page mist `#F4F6F3` and paper `#FFFFFF` for the light site.
-- Botanical teal `#087E70` for primary actions and selected details.
-- Warm brass `#E7AA48` only for restrained emphasis and focus.
-- Dark mode equivalents use deep forest-charcoal surfaces and accessible
-  softened teal, without reducing text contrast.
+- Follow the supplied template's cool neutral background (`#EEF1F5`), white
+  surface, deep ink (`#0D1220`), slate muted text (`#545E73`), and vivid blue
+  accent (`#2433E6`).
+- Preserve its dark equivalents (`#0A0E18` background, `#121827` surface,
+  `#E7EBF5` ink, and accessible softened blue accent).
+- Keep contrast readable in both modes and include explicit focus states.
 
 ### Type
 
-- Editorial serif display face for portfolio name/headline and major section
-  headings; use an available system serif fallback to keep the site
-  self-contained.
-- Neutral, highly legible system sans-serif for body content, controls, and
-  project details.
-- No dependence on remote font services.
+- Use the supplied template's bold display and legible body hierarchy with
+  system sans-serif fallbacks; use monospace only for compact labels and data.
+- Do not depend on remote font services; retain the self-contained system
+  fallbacks rather than loading the sample's Google Fonts stylesheet.
 
 ### Layout
 
-- Public site: asymmetric two-part hero with a left-aligned introduction and
-  optional portrait; a compact top navigation; selected work as spacious case
-  study cards; skills and background in a secondary section; a clear contact
-  invitation near the end.
-- Portfolio workspace: vertically ordered readiness, website templates, then
+- Public site: compact sticky navigation; asymmetric introduction and
+  profile-at-a-glance card with optional selected portrait; spacious project
+  case studies with keyboard-operable tabs; categorized skills; background;
+  copyable contact details; and a back-to-top footer.
+- Portfolio workspace: vertically ordered readiness, one generated website,
+  then
   resume choices/preview/export, collapsing to a single column on mobile.
 - Profile editor: retain the existing app form patterns, add explicit
   headings for photo, about, contact and social links, and keep a persistent
@@ -239,14 +244,14 @@ setup documentation together.
 
 ### Principles
 
-- One memorable design gesture: editorial typography paired with a distinctive
-  portrait silhouette/selected-work art treatment; keep content quiet and
-  legible around it.
+- Keep the optional portrait and project case-study details as the visual
+  anchors; keep content quiet and legible around them.
 - Let user-supplied work be the visual proof. Use no fake companies, claims,
   metrics, or example content in the final generated site.
 - Structural hierarchy should distinguish real project case studies from
   skills and personal background.
-- Light/dark modes share one coherent composition, not two unrelated themes.
+- Light/dark modes share one coherent composition and are controlled by the
+  generated page's own toggle.
 
 ## Acceptance and validation
 
@@ -257,8 +262,9 @@ setup documentation together.
   explicit use in output.
 - Home reminder appears when the profile is incomplete, opens Profile, and
   updates after completion.
-- Portfolio shows the objective meter, actual user content, light/dark preview,
-  explicit selection/review, publish/update/unpublish, and share URL/copy.
+- Portfolio shows the objective meter, actual user content, a single preview
+  with an in-page light/dark toggle, explicit selection/review,
+  publish/update/unpublish, and share URL/copy.
 - Generated HTML never includes unselected fields, evidence file paths, tokens,
   secrets, or record IDs; unsafe links are not rendered as links.
 - Each resume style previews; PDF and DOCX contain the same selected factual

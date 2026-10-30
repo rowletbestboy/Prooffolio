@@ -10,6 +10,22 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-23-prooffolio-portfolio-integration-design.md`
 
+## Integration status (2026-10-29)
+
+Tasks 1–7 are integrated in the current `main` checkout (code integration commit `e680875`), including profile contacts/photo and Upwork support, the private portfolio workspace, generated website preview/download and explicit publication flows, and resume previews with PDF/DOCX export. The original task checkboxes below describe the implementation procedure; they were not maintained as a completion ledger, so use this status section and the validation results below rather than interpreting unchecked boxes as proof that the code is absent.
+
+Fresh validation from `app_name` on 2026-10-29:
+
+- Portfolio, profile, and dashboard tests: 77 tests passed.
+- Full Flutter test suite: 113 tests passed.
+- `flutter analyze --no-pub`: no issues found.
+- `flutter build web --no-pub`: succeeded. Flutter reported two WebAssembly dry-run lint findings in the third-party `image` package; the standard Web build completed.
+- `git diff --check`: passed after the documentation update.
+
+External Supabase state has not been checked in this session. The user previously reported applying the portfolio-publication migration; do not rerun it automatically. Confirm whether the profile contact/photo and Upwork migrations are applied, verify the public bucket in the intended project, and provide `PORTFOLIO_PUBLIC_BASE_URL` at runtime/build time before claiming live publishing is ready. Authenticated publish/unpublish behavior and browser/device visual acceptance still require project/device verification.
+
+On 2026-10-29, the user replaced the prior generated-site direction with their supplied one-page HTML layout. The app now generates one responsive website with its own visitor-controlled light/dark toggle; the app-side Light/Dark selector is removed. Existing publication `template` values remain in the database for compatibility but no longer select different generated appearances.
+
 ## Global Constraints
 
 - Desktop is the integration target; preserve all pre-existing tracked and untracked work in both checkouts, and preserve every SQL migration and project document.
@@ -18,7 +34,7 @@
 - Keep existing owner-only table policies and private Evidence bucket unchanged; public visitors may access only explicitly selected generated static files.
 - Never fabricate content, IDs, private Evidence paths, credentials, metrics, or claims in output.
 - Call the standard resume layout “ATS-friendly,” never “ATS approved”; state that no universal ATS parser result is guaranteed.
-- Use the approved portfolio mockup as the visual direction: evergreen/teal, editorial serif display with legible system sans, asymmetric photo-led introduction, selected-work case studies, clear contact action, cohesive light/dark layouts, responsive and accessible.
+- Use the user's supplied one-page HTML portfolio as the visual direction: compact navigation, profile-at-a-glance card, optional photo, selected-work case studies, categorized skills, background, copyable contacts, responsive layout, and an in-page theme toggle. Do not copy sample personal content; keep generated assets self-contained and use system font fallbacks.
 - Profile photo: JPG/PNG/WEBP signature validation, maximum 5,000,000 bytes, private source storage; publish a bundled copy only when explicitly selected.
 - Require `PORTFOLIO_PUBLIC_BASE_URL` (HTTPS public bucket base URL) for live publishing; do not put a service-role key in Flutter.
 - Complete each task's red/green test cycle before proceeding. Leave changes uncommitted unless separately requested.
@@ -41,11 +57,11 @@
 - `app_name/supabase/migrations/20261028100000_add_upwork_profile_link.sql`: additive owner profile Upwork link after existing publication migration.
 - `app_name/lib/features/dashboard/presentation/home_shell.dart`: profile completion reminder and Portfolio destination wiring, preserving current Desktop navigation/dashboard work.
 - `app_name/lib/features/portfolio/domain/portfolio_content.dart`: profile/project/skill/education/experience/credential/achievement/evidence view models and source states.
-- `app_name/lib/features/portfolio/domain/portfolio_template.dart`: light/dark template and selection model.
+- `app_name/lib/features/portfolio/domain/portfolio_template.dart`: legacy publication template values and content selection model; the generated site now owns its theme toggle.
 - `app_name/lib/features/portfolio/data/portfolio_content_repository.dart`: compose existing repositories into private preview content.
 - `app_name/lib/features/portfolio/data/portfolio_site_generator.dart`: safe, polished responsive static HTML/CSS/JS, photo asset, and ZIP bundle.
 - `app_name/lib/features/portfolio/presentation/portfolio_preview_screen.dart`: private profile/work preview, objective checklist, template previews, and resume entry actions.
-- `app_name/lib/features/portfolio/presentation/portfolio_site_preview.dart`: selected-content review, template switch, download, publication status, confirm/publish/update/unpublish, stable URL.
+- `app_name/lib/features/portfolio/presentation/portfolio_site_preview.dart`: selected-content review, single generated template preview, download, publication status, confirm/publish/update/unpublish, stable URL.
 - `app_name/lib/features/portfolio/data/portfolio_publication_repository.dart`: owner-checked publication orchestration and Supabase Storage/table adapter.
 - `app_name/supabase/migrations/20261027100000_create_portfolio_publications.sql`: retain the migration the user says has already been applied; do not modify or rerun it.
 - `app_name/lib/features/portfolio/domain/resume_content.dart`: shared factual resume model.
@@ -137,11 +153,11 @@
 - Consumes: `PortfolioContent`, `PortfolioSelection`, `PortfolioReadiness`.
 - Produces: `PortfolioSiteGenerator.generate(PortfolioContent, PortfolioSelection, PortfolioTemplate) -> PortfolioSiteBundle`, `PortfolioSiteGenerator.previewHtml(PortfolioSiteBundle) -> String`, and `PortfolioSiteBundle.toZipBytes() -> Uint8List`.
 
-- [ ] **Step 1: Write failing generator/privacy/design tests.** Include selected photo/contact/upwork/socials, skills, richly detailed projects, certifications, achievements, empty sections, hostile HTML, unsafe URL schemes, internal IDs, private Evidence data, both theme variants, and mobile/focus/reduced-motion stylesheet expectations.
+- [ ] **Step 1: Write failing generator/privacy/design tests.** Include selected photo/contact/upwork/socials, skills, richly detailed projects, certifications, achievements, empty sections, hostile HTML, unsafe URL schemes, internal IDs, private Evidence data, in-page theme toggle, and mobile/focus/reduced-motion stylesheet expectations.
 - [ ] **Step 2: Run the focused tests to confirm failure.**
-- [ ] **Step 3: Implement original light/dark site generation based on the approved mockup.** Use user content only; feature a restrained asymmetric hero/photo, clear intro, meaningful project case studies, skills, credentials/achievements, and a contact action. Escape text, permit only safe HTTP(S) links, omit empty sections, exclude Evidence and IDs, and bundle only a selected validated photo. Keep runtime self-contained.
-- [ ] **Step 4: Implement preview and ZIP download.** Provide clear template switching and selected-content review; use the app's supported file save flow and distinguish cancel from failure.
-- [ ] **Step 5: Run generator and preview tests; inspect both generated templates at desktop and mobile widths.**
+- [ ] **Step 3: Implement the user's one-page responsive template.** Use user content only; include its theme toggle, optional selected photo, profile card, case studies, skills, background, and contacts. Escape text, permit only safe HTTP(S) links, omit empty sections, exclude Evidence and IDs, and bundle only a selected validated photo. Keep runtime self-contained.
+- [ ] **Step 4: Implement preview and ZIP download.** Provide selected-content review; use the app's supported file save flow and distinguish cancel from failure.
+- [ ] **Step 5: Run generator and preview tests; inspect the generated template at desktop and mobile widths.**
 
 ### Task 5: Integrate live publish/update/unpublish to Supabase
 

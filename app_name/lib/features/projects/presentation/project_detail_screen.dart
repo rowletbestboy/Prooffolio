@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../../../core/widgets/app_icon_tile.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
@@ -77,8 +78,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     final theme = Theme.of(context);
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Project details'),
+      appBar: AppPageAppBar(
+        title: 'Project details',
         actions: [
           IconButton(
             tooltip: 'Edit project',
@@ -187,7 +188,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppTheme.cardRadius),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

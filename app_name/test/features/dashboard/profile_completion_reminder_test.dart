@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:app_name/features/dashboard/presentation/home_shell.dart';
+import 'package:app_name/features/dashboard/presentation/profile_completion_reminder.dart';
 import 'package:app_name/features/profile/data/profile_repository.dart';
 import 'package:app_name/features/profile/domain/profile.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,11 @@ void main() {
   testWidgets('incomplete profile reminder opens the profile editor', (
     WidgetTester tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(
       MaterialApp(
         home: HomeShell(
@@ -47,8 +53,97 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Profile details ready'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Profile details ready'), findsOneWidget);
     expect(find.text('Complete your profile'), findsNothing);
+  });
+
+  testWidgets('each supported contact method keeps the profile ready', (
+    WidgetTester tester,
+  ) async {
+    const profiles = <ProfileBackground>[
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        contactEmail: 'avery@example.com',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        phone: '+1 555 0100',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        githubUrl: 'https://github.com/avery',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        linkedInUrl: 'https://www.linkedin.com/in/avery',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        upworkUrl: 'https://www.upwork.com/freelancers/~avery',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        jobstreetUrl: 'https://www.jobstreet.com/profile/avery',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        whatsAppNumber: '+15550100',
+      ),
+      ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        headline: 'Community educator',
+        bio: 'I create accessible learning programs.',
+        additionalLinks: [
+          ProfileContactLink(label: 'Writing', url: 'https://example.com'),
+        ],
+      ),
+    ];
+
+    for (final profile in profiles) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProfileCompletionReminder(
+              profile: profile,
+              isLoading: false,
+              hasError: false,
+              onOpenProfile: () {},
+              onRetry: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Profile details ready'), findsOneWidget);
+      expect(find.text('Complete your profile'), findsNothing);
+    }
   });
 
   testWidgets('profile load failures are not shown as completed', (
@@ -62,6 +157,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Profile details could not be checked'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Profile details could not be checked'), findsOneWidget);
     expect(find.text('Profile details ready'), findsNothing);
   });

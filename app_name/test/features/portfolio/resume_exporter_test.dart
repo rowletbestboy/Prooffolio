@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:app_name/features/portfolio/data/resume_exporter.dart';
@@ -39,6 +40,23 @@ void main() {
 
     expect(utf8.decode(bytes.take(5).toList()), '%PDF-');
     expect(pageCount, greaterThan(1));
+  });
+
+  test('visual PDF keeps the main heading clear of the sidebar', () async {
+    final content = ResumeContent.fromPortfolioContent(
+      portfolioContentWithResumeData(photoBytes: tinyPngBytes()),
+    );
+    final bytes = await ResumeExporter.toPdf(
+      content,
+      layout: ResumeLayout.visual,
+      includePhoto: true,
+    );
+    final pdf = _firstCompressedPdfStream(bytes);
+    final headingIndex = pdf.indexOf('[(ALEX)]TJ');
+    expect(headingIndex, greaterThanOrEqualTo(0));
+
+    final headingContent = pdf.substring(0, headingIndex);
+    expect(headingContent, contains('1 0 0 1 184 0 cm'));
   });
 
   test('DOCX export uses headings and ordinary text paragraphs', () async {
@@ -95,4 +113,24 @@ void main() {
     );
     expect(ResumeExporter.fileNameFor('', 'docx'), 'resume.docx');
   });
+}
+
+String _firstCompressedPdfStream(Uint8List bytes) {
+  final pdf = latin1.decode(bytes);
+  final streams = RegExp(
+    r'stream\r?\n([\s\S]*?)\r?\nendstream',
+  ).allMatches(pdf);
+
+  for (final stream in streams) {
+    try {
+      final decoded = latin1.decode(
+        ZLibDecoder().decodeBytes(latin1.encode(stream.group(1)!)),
+      );
+      if (decoded.contains('BT')) return decoded;
+    } on FormatException {
+      continue;
+    }
+  }
+
+  throw StateError('PDF export did not include a readable content stream.');
 }

@@ -2,6 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app_name/core/theme/app_colors.dart';
+import 'package:app_name/core/theme/app_theme.dart';
+import 'package:app_name/core/widgets/app_brand_mark.dart';
+import 'package:app_name/core/widgets/app_icon_tile.dart';
 import 'package:app_name/features/evidence/data/evidence_repository.dart';
 import 'package:app_name/features/evidence/domain/evidence.dart';
 import 'package:app_name/features/evidence/presentation/evidence_library_screen.dart';
@@ -20,6 +24,18 @@ void main() {
     await tester.pumpAndSettle();
     final layoutError = tester.takeException();
     expect(layoutError, isNull);
+    expect(find.text('Evidence library'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(AppBrandMark),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('No evidence added yet'), findsOneWidget);
+    final iconTile = tester.widget<AppIconTile>(find.byType(AppIconTile).first);
+    expect(iconTile.color, AppColors.teal);
+    expect(iconTile.backgroundColor, AppColors.tealContainer);
     await tester.tap(find.byKey(const Key('evidenceAddButton')));
     await tester.pumpAndSettle();
 
@@ -35,13 +51,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: HomeShell(evidenceRepository: repository)),
     );
-
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Evidence library'),
+      find.text('Evidence'),
       160,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Evidence library'));
+    await tester.tap(find.text('Evidence'));
     await tester.pumpAndSettle();
 
     expect(find.text('Evidence library'), findsOneWidget);
@@ -56,6 +72,16 @@ void main() {
 
     await tester.tap(find.byKey(const Key('evidenceAddButton')));
     await tester.pumpAndSettle();
+    expect(_dialogBackground(tester), AppColors.white);
+    final titleDecorator = tester.widget<InputDecorator>(
+      find
+          .descendant(
+            of: find.byKey(const Key('evidenceTitleField')),
+            matching: find.byType(InputDecorator),
+          )
+          .first,
+    );
+    expect(titleDecorator.decoration.fillColor, AppColors.surfaceSubtle);
     await tester.enterText(
       find.byKey(const Key('evidenceTitleField')),
       'Food safety certificate',
@@ -191,6 +217,7 @@ void main() {
     await tester.tap(find.byTooltip('Delete evidence'));
     await tester.pumpAndSettle();
     expect(find.text('Delete this evidence?'), findsOneWidget);
+    expect(_dialogBackground(tester), AppColors.white);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(repository.records, hasLength(1));
@@ -207,11 +234,16 @@ Widget _app(
   _FakeEvidenceRepository repository, {
   _FakeEvidenceFilePicker? picker,
 }) => MaterialApp(
+  theme: AppTheme.light,
   home: EvidenceLibraryScreen(
     repository: repository,
     filePicker: picker ?? _FakeEvidenceFilePicker(null),
   ),
 );
+
+Color? _dialogBackground(WidgetTester tester) => Theme.of(
+  tester.element(find.byType(AlertDialog)),
+).dialogTheme.backgroundColor;
 
 EvidenceRecord _urlRecord() => EvidenceRecord(
   id: 'url-1',

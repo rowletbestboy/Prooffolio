@@ -88,14 +88,14 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Continue'));
+    await _tapVisible(tester, find.text('Continue'));
     await tester.pumpAndSettle();
     expect(find.text('Enter your display name'), findsOneWidget);
     expect(find.text('Use 3 to 24 characters'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).first, 'Avery Student');
     await tester.enterText(find.byType(TextFormField).last, 'bad-username');
-    await tester.tap(find.text('Continue'));
+    await _tapVisible(tester, find.text('Continue'));
     await tester.pumpAndSettle();
     expect(
       find.text('Use letters, numbers, and underscores only'),
@@ -122,7 +122,7 @@ void main() {
 
     await tester.enterText(find.byType(TextFormField).first, 'Avery Student');
     await tester.enterText(find.byType(TextFormField).last, 'avery_student');
-    await tester.tap(find.text('Continue'));
+    await _tapVisible(tester, find.text('Continue'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('profiles migration'), findsOneWidget);
@@ -146,7 +146,7 @@ void main() {
       find.byKey(const Key('confirmNewPasswordField')),
       'different',
     );
-    await tester.tap(find.text('Save new password'));
+    await _tapVisible(tester, find.text('Save new password'));
     await tester.pumpAndSettle();
 
     expect(find.text('Use at least 8 characters'), findsOneWidget);
@@ -154,16 +154,15 @@ void main() {
     expect(updateCalls, 0);
   });
 
-  testWidgets('Prooffolio starts on the progress Home destination', (
+  testWidgets('Prooffolio starts on the Home dashboard', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Your progress'), findsOneWidget);
-    expect(
-      find.text('Build a clear picture of your work, one piece at a time.'),
-      findsOneWidget,
-    );
+    expect(find.text('PORTFOLIO COMPLETION'), findsOneWidget);
+    expect(find.text('Welcome to'), findsOneWidget);
+    expect(find.text('Prooffolio'), findsOneWidget);
   });
 
   testWidgets('bottom navigation opens all four first-run destinations', (
@@ -199,10 +198,10 @@ void main() {
 
     await _tapDestination(tester, Icons.public_outlined);
     await tester.pumpAndSettle();
-    expect(find.text('Your private portfolio'), findsOneWidget);
+    expect(find.text('Portfolio Preview'), findsOneWidget);
     expect(find.text('Private preview'), findsOneWidget);
     final portfolioIntro = find.text(
-      'Review how your saved work comes together. Nothing here is public unless you choose to publish it later.',
+      'See how your portfolio will look to others.',
     );
     await tester.scrollUntilVisible(
       portfolioIntro,
@@ -222,7 +221,7 @@ void main() {
 
     await _tapDestination(tester, Icons.home_outlined);
     await tester.pumpAndSettle();
-    expect(find.text('Your progress'), findsOneWidget);
+    expect(find.text('PORTFOLIO COMPLETION'), findsOneWidget);
   });
 }
 

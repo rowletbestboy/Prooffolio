@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../../../core/widgets/app_icon_tile.dart';
 import '../data/project_repository.dart';
 import '../domain/project.dart';
@@ -172,7 +173,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
     final theme = Theme.of(context);
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Edit project' : 'New project')),
+      appBar: AppPageAppBar(title: isEditing ? 'Edit project' : 'New project'),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 12, 20, 16),
         child: FilledButton(
@@ -348,7 +349,7 @@ class _ProjectFormScreenState extends State<ProjectFormScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppTheme.controlRadius),
                   ),
                   child: Text(
                     'This project is saved as a private draft. You can choose what to share later.',

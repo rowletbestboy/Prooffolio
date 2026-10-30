@@ -8,37 +8,29 @@ class AppBrandMark extends StatelessWidget {
   final bool inverse;
   final bool compact;
 
+  static const _fullLogoAsset = 'assets/prooffolio_logo_clean.png';
+  static const _compactLogoAsset = 'assets/prooffolio_mark_clean.png';
+
   @override
   Widget build(BuildContext context) {
-    final foreground = inverse ? AppColors.deepNavy : AppColors.white;
-    final background = inverse ? AppColors.white : AppColors.indigo;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: compact ? 38 : 44,
-          height: compact ? 38 : 44,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(
-            Icons.fact_check_outlined,
-            color: foreground,
-            size: compact ? 22 : 25,
-          ),
+    return Semantics(
+      label: 'Prooffolio',
+      image: true,
+      child: Container(
+        padding: inverse ? const EdgeInsets.all(8) : EdgeInsets.zero,
+        decoration: BoxDecoration(
+          color: inverse ? AppColors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(compact ? 12 : 16),
         ),
-        if (!compact) ...[
-          const SizedBox(width: 11),
-          Text(
-            'Prooffolio',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: inverse ? AppColors.white : AppColors.deepNavy,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ],
+        child: Image.asset(
+          compact ? _compactLogoAsset : _fullLogoAsset,
+          width: compact ? 38 : 150,
+          height: compact ? 38 : 118,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          excludeFromSemantics: true,
+        ),
+      ),
     );
   }
 }

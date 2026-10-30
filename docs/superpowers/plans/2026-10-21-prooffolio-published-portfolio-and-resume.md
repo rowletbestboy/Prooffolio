@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-21-prooffolio-published-portfolio-and-resume-design.md`
 
+> **Status note (2026-10-29):** This is the original feature plan. Its implementation was integrated into the main app and further reconciled by [the 2026-10-23 integration plan](./2026-10-23-prooffolio-portfolio-integration.md). The user later supplied a replacement generated-site layout with a built-in theme toggle; use one generated template, not the historical app-side Light/Dark selector described below. The unchecked implementation steps below are historical and are not a current completion ledger. Current local verification has passed, but live Supabase publication and browser/device acceptance remain external checks; consult the integration plan and [Supabase setup](../../supabase-setup.md) before deployment. Do not rerun migrations solely because a historical checkbox is unchecked.
+
 ## Global Constraints
 
 - Follow the user-approved order: profile photo/contact links; private preview/advisory meter; light/dark site preview/download/publish; resume preview and PDF/DOCX.

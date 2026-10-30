@@ -211,6 +211,20 @@ class ProfileBackground {
       );
 }
 
+bool profileHasContactMethod(ProfileBackground? profile) {
+  if (profile == null) return false;
+  return [
+        profile.contactEmail,
+        profile.phone,
+        profile.githubUrl,
+        profile.linkedInUrl,
+        profile.upworkUrl,
+        profile.jobstreetUrl,
+        profile.whatsAppNumber,
+      ].any((value) => value?.trim().isNotEmpty == true) ||
+      profile.additionalLinks.any((link) => link.url.trim().isNotEmpty);
+}
+
 class ProfileContactLink {
   const ProfileContactLink({required this.label, required this.url});
 

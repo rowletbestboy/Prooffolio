@@ -69,7 +69,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
                     color: AppColors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(AppTheme.cardRadius),
                     border: Border.all(color: AppColors.lightSlate),
                   ),
                   child: Column(

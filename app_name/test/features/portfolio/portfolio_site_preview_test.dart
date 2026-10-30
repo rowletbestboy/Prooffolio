@@ -1,5 +1,6 @@
 import 'package:app_name/features/portfolio/domain/portfolio_content.dart';
 import 'package:app_name/features/portfolio/presentation/portfolio_site_preview.dart';
+import 'package:app_name/core/widgets/app_brand_mark.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -35,7 +36,7 @@ void main() {
   );
 
   testWidgets(
-    'selection starts private and template changes regenerate the live page',
+    'selection starts private and generated page provides its own theme toggle',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 5000);
       tester.view.devicePixelRatio = 1;
@@ -62,6 +63,13 @@ void main() {
         contains('Alex &amp; Co'),
       );
       expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byType(AppBrandMark),
+        ),
+        findsOneWidget,
+      );
+      expect(
         tester
             .widget<CheckboxListTile>(find.byType(CheckboxListTile).first)
             .value,
@@ -77,15 +85,14 @@ void main() {
           .data!;
       expect(generatedHtml, isNot(contains('Alex &amp; Co')));
 
-      await tester.ensureVisible(find.text('Dark'));
-      await tester.tap(find.text('Dark'));
-      await tester.pumpAndSettle();
       generatedHtml = tester
           .widget<SelectableText>(
             find.byKey(const ValueKey('generated-preview')),
           )
           .data!;
-      expect(generatedHtml, contains('--page-background: #111827'));
+      expect(generatedHtml, contains('id="theme-btn"'));
+      expect(generatedHtml, contains(':root[data-theme="dark"]'));
+      expect(find.byType(SegmentedButton), findsNothing);
     },
   );
 

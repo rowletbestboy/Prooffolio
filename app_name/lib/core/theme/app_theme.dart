@@ -46,11 +46,11 @@ abstract final class AppTheme {
           surfaceContainerLowest: AppColors.white,
           surfaceContainerLow: AppColors.cloudWhite,
           surfaceContainer: AppColors.cloudWhite,
-          surfaceContainerHigh: const Color(0xFFF1F5F9),
+          surfaceContainerHigh: AppColors.paleBlue,
           surfaceContainerHighest: AppColors.lightSlate,
           inverseSurface: AppColors.deepNavy,
           onInverseSurface: AppColors.white,
-          inversePrimary: const Color(0xFFC7D2FE),
+          inversePrimary: AppColors.inverseIndigo,
         );
 
     const textTheme = TextTheme(
@@ -151,8 +151,8 @@ abstract final class AppTheme {
       cardTheme: CardThemeData(
         color: AppColors.white,
         surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.transparent,
-        elevation: 0,
+        shadowColor: AppColors.deepNavy.withValues(alpha: .06),
+        elevation: 2,
         margin: EdgeInsets.zero,
         shape: outlinedShape,
       ),
@@ -264,14 +264,37 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         indicatorColor: AppColors.indigoContainer,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? AppColors.indigo : AppColors.slateGray,
+          );
+        }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
-            color: selected ? AppColors.deepNavy : AppColors.slateGray,
+            color: selected ? AppColors.indigo : AppColors.slateGray,
             fontSize: 12,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           );
         }),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: AppColors.white,
+        indicatorColor: AppColors.indigoContainer,
+        selectedIconTheme: const IconThemeData(color: AppColors.indigo),
+        unselectedIconTheme: const IconThemeData(color: AppColors.slateGray),
+        selectedLabelTextStyle: const TextStyle(
+          color: AppColors.indigo,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelTextStyle: const TextStyle(
+          color: AppColors.slateGray,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        labelType: NavigationRailLabelType.all,
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.lightSlate,

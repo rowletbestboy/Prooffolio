@@ -237,7 +237,7 @@ void main() {
     expect(html, isNot(contains('alt="Alex')));
   });
 
-  test('light and dark variants share content and differ in appearance', () {
+  test('generated site uses the responsive one-page theme-toggle template', () {
     final light = PortfolioSiteGenerator.generate(
       content,
       selection,
@@ -255,16 +255,30 @@ void main() {
     );
     expect(
       utf8.decode(light.files['styles.css']!),
-      contains('--page-background: #f8fafc'),
-    );
-    expect(
       utf8.decode(dark.files['styles.css']!),
-      contains('--page-background: #111827'),
     );
-    expect(
-      utf8.decode(light.files['styles.css']!),
-      contains('@media (max-width: 680px)'),
-    );
+    final html = utf8.decode(light.files['index.html']!);
+    final styles = utf8.decode(light.files['styles.css']!);
+    final script = utf8.decode(light.files['app.js']!);
+    expect(html, contains('class="site-head"'));
+    expect(html, contains('class="wrap hero-grid'));
+    expect(html, contains('class="profile"'));
+    expect(html, contains('class="case"'));
+    expect(html, contains('id="theme-btn"'));
+    expect(html, contains('aria-label="Switch theme"'));
+    expect(styles, contains('--bg: #EEF1F5'));
+    expect(styles, contains(':root[data-theme="dark"]'));
+    expect(styles, contains('@media (prefers-color-scheme: dark)'));
+    expect(styles, contains('@media (max-width: 780px)'));
+    expect(styles, contains('@media (max-width: 560px)'));
+    expect(styles, contains('@media (prefers-reduced-motion: reduce)'));
+    expect(script, contains("'portfolio-theme:' + window.location.pathname"));
+    expect(script, contains('localStorage.getItem(themeKey)'));
+    expect(script, contains('localStorage.setItem(themeKey, next)'));
+    expect(script, contains("setAttribute('data-theme', next)"));
+    expect(html, isNot(contains('fonts.googleapis.com')));
+    expect(html, isNot(contains('Fresh graduate')));
+    expect(html, isNot(contains('your.name@example.com')));
     expect(
       light.files.keys,
       containsAll(['index.html', 'styles.css', 'app.js']),

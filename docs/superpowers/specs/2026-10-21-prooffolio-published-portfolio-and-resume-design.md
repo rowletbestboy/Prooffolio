@@ -1,5 +1,11 @@
 # Prooffolio Portfolio, Publishing, and Resume Design
 
+> **Design update (2026-10-29):** The user replaced the original two-template
+> direction with a supplied responsive one-page HTML layout and an in-page
+> visitor theme toggle. This document records the original design; the current
+> generated-site direction is documented in
+> [the integration design](./2026-10-23-prooffolio-portfolio-integration-design.md).
+
 ## Intent
 
 Prooffolio already collects profile background, projects, skills, education,
@@ -13,9 +19,9 @@ portfolio and generate a resume from the same saved records.
 
 1. Add profile photo and contact links.
 2. Create the private portfolio preview and an advisory meter with explanations.
-3. Add light and dark web templates, live preview, and downloadable files. This
-   phase also includes an explicit publish/unpublish flow with a shareable URL,
-   as requested in the follow-up discussion.
+3. Add one responsive generated website with an in-page light/dark toggle,
+   live preview, downloadable files, and an explicit publish/unpublish flow
+   with a shareable URL.
 4. Add an ATS-friendly resume layout and PDF/DOCX export.
 
 Each phase should leave the existing app usable. Later phases consume the data
@@ -30,8 +36,9 @@ and interfaces from earlier phases.
   employability, or career quality.
 - Allow users to choose what appears in a public version, preview it, publish it
   at a Prooffolio-hosted shareable URL, and unpublish it later.
-- Provide two web portfolio themes (light and dark), rendered as real HTML, CSS,
-  and JavaScript files that can be previewed and downloaded.
+- Provide one user-selected-content website layout with an in-page light/dark
+  toggle, rendered as real HTML, CSS, and JavaScript files that can be previewed
+  and downloaded.
 - Generate a clean, selectable-text resume with PDF and DOCX download options.
 - Add an optional profile photo and contact channels needed by the private and
   public portfolio.
@@ -102,10 +109,11 @@ and interfaces from earlier phases.
 - Users can preview and choose which supported records/contact fields to
   include before any public page exists.
 
-### Phase 3: Templates, live preview, downloads, and publishing
+### Phase 3: Generated website, live preview, downloads, and publishing
 
-- Provide two distinct templates with the same selected content: light and
-  dark. Template selection and preview work without publishing.
+- Use the user's supplied responsive portfolio layout with an in-page theme
+  toggle. Preview and theme switching work without publishing; do not show an
+  app-side light/dark template selector.
 - Generate a self-contained site bundle with HTML, CSS, and JavaScript. A user
   can download the bundle and host it independently. The bundle must contain
   only selected public content and required assets, never private evidence
@@ -181,8 +189,9 @@ provider/service configuration and migration steps before coding them.
 - Photo/contact fields save and load, validate correctly, and are not public
   until explicitly selected for publishing.
 - The meter explains each suggestion and contains no unsupported judgment.
-- Light and dark templates preview with the same selected content; generated
-  HTML/CSS/JS downloads open as a working static site.
+- The single generated layout previews with selected content and its own
+  working theme toggle; generated HTML/CSS/JS downloads open as a responsive
+  static site.
 - Users can inspect exactly what will become public, publish it to a stable
   shareable URL, and unpublish it. Anonymous reads return only selected public
   content and cease after unpublish.
@@ -193,8 +202,8 @@ provider/service configuration and migration steps before coding them.
 ## Decisions made from the conversation
 
 - Delivery order is fixed as the user's four steps above.
-- Publishing is included with step 3, after private preview and both themes are
-  available.
+- Publishing is included with step 3, after private preview and the generated
+  website are available.
 - A published portfolio is a frozen, explicitly approved snapshot and changes
   only when the user reviews and updates it.
 - The public URL uses a configurable Prooffolio base URL and the user's

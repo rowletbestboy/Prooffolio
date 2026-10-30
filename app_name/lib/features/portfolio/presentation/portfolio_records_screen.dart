@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/portfolio_record_repository.dart';
 import '../domain/portfolio_record.dart';
 
@@ -137,7 +138,7 @@ class _PortfolioRecordsScreenState extends State<PortfolioRecordsScreen> {
     final theme = Theme.of(context);
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: const Text('Certifications and achievements')),
+      appBar: const AppPageAppBar(title: 'Certifications and achievements'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _saving ? null : () => _editRecord(),
         icon: const Icon(Icons.add),

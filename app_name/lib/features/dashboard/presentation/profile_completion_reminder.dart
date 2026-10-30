@@ -188,22 +188,10 @@ List<String> _missingDetails(ProfileBackground? profile) {
   if (profile == null || profile.bio.trim().isEmpty) {
     missing.add('a short work summary');
   }
-  if (!_hasContact(profile)) missing.add('at least one contact method');
+  if (!profileHasContactMethod(profile)) {
+    missing.add('at least one contact method');
+  }
   return missing;
-}
-
-bool _hasContact(ProfileBackground? profile) {
-  if (profile == null) return false;
-  return [
-        profile.contactEmail,
-        profile.phone,
-        profile.githubUrl,
-        profile.linkedInUrl,
-        profile.upworkUrl,
-        profile.jobstreetUrl,
-        profile.whatsAppNumber,
-      ].any((value) => value?.trim().isNotEmpty == true) ||
-      profile.additionalLinks.any((link) => link.url.trim().isNotEmpty);
 }
 
 String _joinDetails(List<String> missing) {

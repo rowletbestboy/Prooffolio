@@ -73,6 +73,8 @@ void main() {
     expect(find.text('Community educator'), findsOneWidget);
     expect(find.text('Email: alex@example.test'), findsOneWidget);
     expect(find.textContaining('not a rating of your career'), findsOneWidget);
+    await tester.ensureVisible(find.byTooltip('Open profile basics'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Open profile basics'));
     expect(profileOpened, isTrue);
   });
@@ -154,10 +156,106 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Preview your resume'));
+    await tester.tap(find.text('Generate Resume'));
 
     expect(resume?.displayName, 'Alex Doe');
     expect(resume?.contactDetails.single.value, 'alex@example.test');
+  });
+
+  testWidgets('portfolio preview presents saved work in the reference layout', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repository = PortfolioContentRepository(
+      profileRepository: _ProfileRepository(
+        profile: const ProfileBackground(
+          displayName: 'Alex Doe',
+          username: 'alex',
+          headline: 'Computer Engineering Student',
+          bio: 'Building practical solutions with code.',
+          contactEmail: 'alex@example.test',
+          githubUrl: 'https://github.com/alex',
+        ),
+      ),
+      projectRepository: _ProjectRepository(projects: [_featuredProject]),
+      skillRepository: _SkillRepository(skills: [_featuredSkill]),
+      portfolioRecordRepository: _PortfolioRecordRepository(),
+      evidenceRepository: _EvidenceRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PortfolioPreviewScreen(
+            repository: repository,
+            userId: 'owner-id',
+            onEditProfile: () {},
+            onOpenProjects: () {},
+            onOpenSkills: () {},
+            onOpenRecord: (_) {},
+            onOpenEvidence: () {},
+            onBuildResume: (_) {},
+            onBuildSite: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Portfolio Preview'), findsOneWidget);
+    expect(find.text('Featured Projects'), findsOneWidget);
+    expect(find.text('Community Exchange'), findsOneWidget);
+    expect(find.text('Flutter'), findsWidgets);
+    expect(find.text('Repository'), findsOneWidget);
+    expect(find.text('Live Demo'), findsOneWidget);
+    expect(find.text('Skills'), findsWidgets);
+    expect(find.text('About Me'), findsOneWidget);
+    expect(find.text('Generate Resume'), findsOneWidget);
+    expect(find.text('Generate Portfolio'), findsOneWidget);
+  });
+
+  testWidgets('about preview card opens profile editing', (tester) async {
+    final repository = PortfolioContentRepository(
+      profileRepository: _ProfileRepository(
+        profile: const ProfileBackground(
+          displayName: 'Alex Doe',
+          username: 'alex',
+          bio: 'A practical introduction.',
+        ),
+      ),
+      projectRepository: _ProjectRepository(projects: [_featuredProject]),
+      skillRepository: _SkillRepository(skills: [_featuredSkill]),
+      portfolioRecordRepository: _PortfolioRecordRepository(),
+      evidenceRepository: _EvidenceRepository(),
+    );
+    var profileOpened = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PortfolioPreviewScreen(
+            repository: repository,
+            userId: 'owner-id',
+            onEditProfile: () => profileOpened = true,
+            onOpenProjects: () {},
+            onOpenSkills: () {},
+            onOpenRecord: (_) {},
+            onOpenEvidence: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('About Me'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('About Me'));
+
+    expect(profileOpened, isTrue);
   });
 
   testWidgets(
@@ -249,7 +347,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.public_outlined));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.byIcon(Icons.public_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Manage achievements'));
     await tester.tap(find.text('Manage achievements'));
@@ -261,6 +364,40 @@ void main() {
     expect(tabs.selected, contains(PortfolioRecordType.achievement));
   });
 }
+
+final _featuredProject = Project(
+  id: 'featured-project',
+  userId: 'owner-id',
+  title: 'Community Exchange',
+  summary: 'A neighborhood resource exchange.',
+  problemStatement: '',
+  description: 'Built a searchable catalog.',
+  keyFeatures: const [],
+  technologies: const ['Flutter', 'Supabase'],
+  contribution: '',
+  challenges: '',
+  lessonsLearned: '',
+  repositoryUrl: 'https://github.com/alex/community-exchange',
+  demoUrl: 'https://example.test/community-exchange',
+  startDate: null,
+  endDate: null,
+  status: ProjectStatus.completed,
+  publicationStatus: ProjectPublicationStatus.draft,
+  createdAt: DateTime.utc(2026),
+  updatedAt: DateTime.utc(2026),
+);
+
+final _featuredSkill = Skill(
+  id: 'featured-skill',
+  userId: 'owner-id',
+  name: 'Programming',
+  category: SkillCategory.technologyDigital,
+  status: SkillStatus.applied,
+  projectIds: const ['featured-project'],
+  projectTitles: const ['Community Exchange'],
+  createdAt: DateTime.utc(2026),
+  updatedAt: DateTime.utc(2026),
+);
 
 final _achievementRecord = PortfolioRecord(
   id: 'achievement-id',
@@ -360,8 +497,12 @@ class _ProjectRepository implements ProjectRepository {
 }
 
 class _SkillRepository implements SkillRepository {
+  _SkillRepository({this.skills = const []});
+
+  final List<Skill> skills;
+
   @override
-  Future<List<Skill>> listSkills() async => [];
+  Future<List<Skill>> listSkills() async => skills;
 
   @override
   Future<Skill> saveSkill({

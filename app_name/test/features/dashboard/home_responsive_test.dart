@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Home metric cards use one column on narrow phone widths', (
+  testWidgets('Home keeps a long saved name readable on narrow phone widths', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 800);
@@ -27,7 +27,24 @@ void main() {
 
     final metricCard = find.byType(Card).first;
     expect(tester.getSize(metricCard).width, greaterThan(220));
-    expect(find.text('Complete your profile'), findsOneWidget);
+    expect(
+      find.text('Avery With A Name That Is Much Longer Than The Header'),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .getRect(
+            find.text('Avery With A Name That Is Much Longer Than The Header'),
+          )
+          .right,
+      lessThanOrEqualTo(
+        tester
+            .getRect(
+              find.text('Real projects.\nReal skills.\nReal opportunities.'),
+            )
+            .left,
+      ),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -51,7 +68,10 @@ void main() {
 class _ResponsiveProfileRepository implements ProfileBackgroundRepository {
   @override
   Future<ProfileBackground?> loadProfile(String userId) async =>
-      const ProfileBackground(displayName: 'Avery', username: 'avery');
+      const ProfileBackground(
+        displayName: 'Avery With A Name That Is Much Longer Than The Header',
+        username: 'avery',
+      );
 
   @override
   Future<void> saveBackground(

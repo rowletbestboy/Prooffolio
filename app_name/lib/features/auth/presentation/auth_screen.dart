@@ -148,8 +148,10 @@ class _AuthScreenState extends State<AuthScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 62),
                       decoration: BoxDecoration(
-                        color: AppColors.indigoBright,
-                        borderRadius: BorderRadius.circular(28),
+                        color: AppColors.deepNavy,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.cardRadius,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,11 +182,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
                         decoration: BoxDecoration(
                           color: AppColors.white,
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.cardRadius,
+                          ),
                           border: Border.all(color: AppColors.lightSlate),
-                          boxShadow: const [
+                          boxShadow: [
                             BoxShadow(
-                              color: Color(0x120F172A),
+                              color: AppColors.deepNavy.withValues(alpha: 0.07),
                               blurRadius: 28,
                               offset: Offset(0, 12),
                             ),
@@ -338,7 +342,7 @@ class _AuthNotice extends StatelessWidget {
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppTheme.controlRadius),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,

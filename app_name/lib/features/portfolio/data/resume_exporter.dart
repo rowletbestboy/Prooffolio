@@ -14,68 +14,10 @@ abstract final class ResumeExporter {
     ResumeLayout layout = ResumeLayout.atsFriendly,
     bool includePhoto = false,
   }) async {
-    final document = pw.Document();
     final photo = _selectedPhoto(content, layout, includePhoto);
-    final photoImage = photo == null ? null : pw.MemoryImage(photo);
-    document.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(48, 44, 48, 44),
-        build: (context) => [
-          if (photoImage != null)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(bottom: 12),
-              child: pw.Image(photoImage, width: 72, height: 72),
-            ),
-          if (content.displayName.isNotEmpty)
-            pw.Text(
-              content.displayName,
-              style: pw.TextStyle(
-                fontSize: layout == ResumeLayout.visual ? 25 : 21,
-                fontWeight: pw.FontWeight.bold,
-                color: layout == ResumeLayout.visual
-                    ? PdfColors.teal800
-                    : PdfColors.black,
-              ),
-            ),
-          if (content.headline.isNotEmpty)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 3),
-              child: pw.Text(content.headline),
-            ),
-          for (final detail in content.contactDetails)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 2),
-              child: pw.Text('${detail.label}: ${detail.value}'),
-            ),
-          if (content.summary.isNotEmpty) ...[
-            _pdfHeading('Summary', layout),
-            for (final paragraph in _pdfParagraphs(content.summary))
-              pw.Text(paragraph),
-          ],
-          for (final section in content.sections) ...[
-            _pdfHeading(section.heading, layout),
-            for (final entry in section.entries) ...[
-              pw.Padding(
-                padding: const pw.EdgeInsets.only(top: 8),
-                child: pw.Text(
-                  entry.title,
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                ),
-              ),
-              if (entry.subtitle.isNotEmpty) pw.Text(entry.subtitle),
-              if (entry.dateRange.isNotEmpty) pw.Text(entry.dateRange),
-              if (entry.description.isNotEmpty)
-                for (final paragraph in _pdfParagraphs(entry.description))
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.only(top: 3),
-                    child: pw.Text(paragraph),
-                  ),
-            ],
-          ],
-        ],
-      ),
-    );
+    final document = layout == ResumeLayout.atsFriendly
+        ? _atsFriendlyDocument(content)
+        : _visualDocument(content, photo);
     return document.save();
   }
 
@@ -138,19 +80,328 @@ abstract final class ResumeExporter {
   }
 }
 
-pw.Widget _pdfHeading(String heading, ResumeLayout layout) => pw.Padding(
-  padding: const pw.EdgeInsets.only(top: 15, bottom: 5),
-  child: pw.Text(
-    heading,
-    style: pw.TextStyle(
-      fontSize: 13,
-      fontWeight: pw.FontWeight.bold,
-      color: layout == ResumeLayout.visual
-          ? PdfColors.teal800
-          : PdfColors.black,
+pw.Document _atsFriendlyDocument(ResumeContent content) {
+  final document = pw.Document();
+  document.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.fromLTRB(46, 38, 46, 38),
+      build: (context) => [
+        if (content.displayName.isNotEmpty)
+          pw.Center(
+            child: pw.Text(
+              content.displayName.toUpperCase(),
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(fontSize: 25, letterSpacing: 2.2),
+            ),
+          ),
+        if (content.headline.isNotEmpty)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(top: 3),
+            child: pw.Center(
+              child: pw.Text(
+                content.headline.toUpperCase(),
+                textAlign: pw.TextAlign.center,
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        if (content.contactDetails.isNotEmpty)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(top: 7, bottom: 9),
+            child: pw.Center(
+              child: pw.Text(
+                content.contactDetails
+                    .map((detail) => detail.value)
+                    .join(' | '),
+                textAlign: pw.TextAlign.center,
+                style: const pw.TextStyle(fontSize: 8),
+              ),
+            ),
+          ),
+        if (content.displayName.isNotEmpty ||
+            content.headline.isNotEmpty ||
+            content.contactDetails.isNotEmpty)
+          pw.Divider(thickness: 1.2, color: PdfColors.black),
+        if (content.summary.isNotEmpty) ...[
+          _atsSectionHeading('Summary'),
+          pw.Text(content.summary, style: const pw.TextStyle(fontSize: 9)),
+        ],
+        for (final section in content.sections) ...[
+          _atsSectionHeading(
+            section.heading == 'Experience'
+                ? 'Professional Experience'
+                : section.heading,
+          ),
+          if (section.heading == 'Skills')
+            _atsSkills(section.entries)
+          else
+            for (final entry in section.entries) _atsEntry(entry),
+        ],
+      ],
     ),
+  );
+  return document;
+}
+
+pw.Document _visualDocument(ResumeContent content, Uint8List? photo) {
+  const sidebarWidth = 160.0;
+  const columnGap = 24.0;
+  final document = pw.Document();
+  final photoImage = photo == null ? null : pw.MemoryImage(photo);
+  final sidebarColor = PdfColor.fromHex('#F1F1F1');
+  final pageTheme = pw.PageTheme(
+    pageFormat: PdfPageFormat.a4,
+    margin: const pw.EdgeInsets.fromLTRB(28, 30, 28, 30),
+    buildBackground: (context) => pw.Stack(
+      children: [
+        pw.Positioned(
+          left: 0,
+          top: 0,
+          right: 0,
+          bottom: 0,
+          child: pw.Container(color: PdfColors.white),
+        ),
+        pw.Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          child: pw.SizedBox(
+            width: sidebarWidth,
+            child: pw.Container(color: sidebarColor),
+          ),
+        ),
+      ],
+    ),
+  );
+  final sidebarSections = content.sections.where(
+    (section) => section.heading == 'Education' || section.heading == 'Skills',
+  );
+  final mainSections = content.sections.where(
+    (section) => section.heading != 'Education' && section.heading != 'Skills',
+  );
+  document.addPage(
+    pw.MultiPage(
+      pageTheme: pageTheme,
+      build: (context) => [
+        pw.Partitions(
+          children: [
+            pw.Partition(
+              width: sidebarWidth,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  if (photoImage != null)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 14),
+                      child: pw.Center(
+                        child: pw.ClipOval(
+                          child: pw.SizedBox(
+                            width: 66,
+                            height: 66,
+                            child: pw.Image(photoImage, fit: pw.BoxFit.cover),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (content.contactDetails.isNotEmpty) ...[
+                    _visualSectionHeading('Contact Me'),
+                    for (final detail in content.contactDetails)
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.only(bottom: 4),
+                        child: pw.Text(
+                          '${detail.label}: ${detail.value}',
+                          style: const pw.TextStyle(fontSize: 7.5),
+                        ),
+                      ),
+                  ],
+                  for (final section in sidebarSections) ...[
+                    _visualSectionHeading(section.heading),
+                    if (section.heading == 'Skills')
+                      for (final entry in section.entries)
+                        _visualBullet(entry.title)
+                    else
+                      for (final entry in section.entries)
+                        _visualEntry(entry, compact: true),
+                  ],
+                ],
+              ),
+            ),
+            pw.Partition(
+              width: columnGap,
+              child: pw.Column(children: []),
+            ),
+            pw.Partition(
+              flex: 1,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  if (content.displayName.isNotEmpty)
+                    pw.Text(
+                      content.displayName.toUpperCase(),
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey900,
+                      ),
+                    ),
+                  if (content.headline.isNotEmpty)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 3, bottom: 18),
+                      child: pw.Text(
+                        content.headline,
+                        style: const pw.TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  if (content.summary.isNotEmpty) ...[
+                    _visualSectionHeading('About Me'),
+                    pw.Text(
+                      content.summary,
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+                  ],
+                  for (final section in mainSections) ...[
+                    _visualSectionHeading(
+                      section.heading == 'Experience'
+                          ? 'Work Experience'
+                          : section.heading,
+                    ),
+                    for (final entry in section.entries) _visualEntry(entry),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  return document;
+}
+
+pw.Widget _atsSectionHeading(String heading) => pw.Padding(
+  padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
+  child: pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.Text(
+        heading.toUpperCase(),
+        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+      ),
+      pw.Divider(height: 4, thickness: 0.7, color: PdfColors.black),
+    ],
   ),
 );
+
+pw.Widget _atsEntry(ResumeEntry entry) => pw.Padding(
+  padding: const pw.EdgeInsets.only(bottom: 6),
+  child: pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Expanded(
+            child: pw.Text(
+              entry.title,
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          if (entry.dateRange.isNotEmpty)
+            pw.Text(entry.dateRange, style: const pw.TextStyle(fontSize: 8)),
+        ],
+      ),
+      if (entry.subtitle.isNotEmpty)
+        pw.Text(entry.subtitle, style: const pw.TextStyle(fontSize: 8)),
+      ..._pdfBullets(entry.description, fontSize: 8),
+    ],
+  ),
+);
+
+pw.Widget _atsSkills(List<ResumeEntry> entries) => pw.Wrap(
+  spacing: 10,
+  runSpacing: 2,
+  children: [
+    for (final entry in entries)
+      pw.SizedBox(
+        width: 155,
+        child: pw.Bullet(
+          text: entry.title,
+          style: const pw.TextStyle(fontSize: 8),
+        ),
+      ),
+  ],
+);
+
+pw.Widget _visualSectionHeading(String heading) => pw.Padding(
+  padding: const pw.EdgeInsets.only(top: 13, bottom: 6),
+  child: pw.Text(
+    heading.toUpperCase(),
+    style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+  ),
+);
+
+pw.Widget _visualEntry(ResumeEntry entry, {bool compact = false}) => pw.Padding(
+  padding: pw.EdgeInsets.only(bottom: compact ? 7 : 9),
+  child: pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Expanded(
+            child: pw.Text(
+              entry.title,
+              style: pw.TextStyle(
+                fontSize: compact ? 7.5 : 8.5,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          if (!compact && entry.dateRange.isNotEmpty)
+            pw.Text(entry.dateRange, style: const pw.TextStyle(fontSize: 7)),
+        ],
+      ),
+      if (entry.subtitle.isNotEmpty)
+        pw.Text(entry.subtitle, style: const pw.TextStyle(fontSize: 7.5)),
+      if (compact && entry.dateRange.isNotEmpty)
+        pw.Text(entry.dateRange, style: const pw.TextStyle(fontSize: 7)),
+      if (!compact) ..._pdfBullets(entry.description, fontSize: 7.5),
+      if (compact && entry.description.isNotEmpty)
+        pw.Text(entry.description, style: const pw.TextStyle(fontSize: 7)),
+    ],
+  ),
+);
+
+pw.Widget _visualBullet(String text) => pw.Bullet(
+  text: text,
+  style: const pw.TextStyle(fontSize: 7.5),
+  padding: const pw.EdgeInsets.only(bottom: 3),
+);
+
+List<pw.Widget> _pdfBullets(String text, {required double fontSize}) {
+  final paragraphs = text
+      .split(RegExp(r'[\r\n]+'))
+      .map((paragraph) => paragraph.trim())
+      .where((paragraph) => paragraph.isNotEmpty);
+  return [
+    for (final paragraph in paragraphs)
+      for (final chunk in _pdfParagraphs(paragraph))
+        pw.Bullet(
+          text: chunk,
+          style: pw.TextStyle(fontSize: fontSize),
+          padding: const pw.EdgeInsets.only(top: 2),
+        ),
+  ];
+}
 
 Uint8List? _selectedPhoto(
   ResumeContent content,

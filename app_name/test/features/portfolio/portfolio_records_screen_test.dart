@@ -2,6 +2,10 @@ import 'package:app_name/features/dashboard/presentation/home_shell.dart';
 import 'package:app_name/features/portfolio/data/portfolio_record_repository.dart';
 import 'package:app_name/features/portfolio/domain/portfolio_record.dart';
 import 'package:app_name/features/portfolio/presentation/portfolio_records_screen.dart';
+import 'package:app_name/core/theme/app_colors.dart';
+import 'package:app_name/core/theme/app_theme.dart';
+import 'package:app_name/core/widgets/app_brand_mark.dart';
+import 'package:app_name/core/widgets/app_icon_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,12 +20,23 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light,
         home: PortfolioRecordsScreen(
           repository: _FakePortfolioRecordRepository(),
         ),
       ),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(AppBrandMark),
+      ),
+      findsOneWidget,
+    );
+    final iconTile = tester.widget<AppIconTile>(find.byType(AppIconTile).first);
+    expect(iconTile.color, AppColors.indigo);
+    expect(iconTile.backgroundColor, AppColors.indigoContainer);
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
@@ -37,16 +52,17 @@ void main() {
   ) async {
     final repository = _FakePortfolioRecordRepository();
     await tester.pumpWidget(
-      MaterialApp(home: HomeShell(portfolioRecordRepository: repository)),
+      MaterialApp(
+        theme: AppTheme.light,
+        home: HomeShell(portfolioRecordRepository: repository),
+      ),
     );
+    await tester.pumpAndSettle();
 
-    final credentialsLink = find.text('Certifications and achievements');
-    await tester.scrollUntilVisible(
-      credentialsLink,
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(credentialsLink);
+    final credentialsLink = find.bySemanticsLabel('Certifications: 0');
+    await tester.ensureVisible(credentialsLink);
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Certifications: 0'));
     await tester.pumpAndSettle();
 
     expect(find.byType(PortfolioRecordsScreen), findsOneWidget);
@@ -58,13 +74,26 @@ void main() {
   ) async {
     final repository = _FakePortfolioRecordRepository();
     await tester.pumpWidget(
-      MaterialApp(home: PortfolioRecordsScreen(repository: repository)),
+      MaterialApp(
+        theme: AppTheme.light,
+        home: PortfolioRecordsScreen(repository: repository),
+      ),
     );
 
     await tester.tap(find.text('Achievements'));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
+    expect(_dialogBackground(tester), AppColors.white);
+    final titleDecorator = tester.widget<InputDecorator>(
+      find
+          .descendant(
+            of: find.byKey(const Key('portfolioRecordTitleField')),
+            matching: find.byType(InputDecorator),
+          )
+          .first,
+    );
+    expect(titleDecorator.decoration.fillColor, AppColors.surfaceSubtle);
     await tester.enterText(
       find.byKey(const Key('portfolioRecordTitleField')),
       'Community garden recognition',
@@ -87,7 +116,10 @@ void main() {
   ) async {
     final repository = _FakePortfolioRecordRepository();
     await tester.pumpWidget(
-      MaterialApp(home: PortfolioRecordsScreen(repository: repository)),
+      MaterialApp(
+        theme: AppTheme.light,
+        home: PortfolioRecordsScreen(repository: repository),
+      ),
     );
 
     await tester.tap(find.byType(FloatingActionButton));
@@ -122,6 +154,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light,
         home: PortfolioRecordsScreen(
           repository: _FakePortfolioRecordRepository(),
         ),
@@ -135,6 +168,10 @@ void main() {
     expect(find.text('Add achievement'), findsNWidgets(2));
   });
 }
+
+Color? _dialogBackground(WidgetTester tester) => Theme.of(
+  tester.element(find.byType(AlertDialog)),
+).dialogTheme.backgroundColor;
 
 class _FakePortfolioRecordRepository implements PortfolioRecordRepository {
   final List<PortfolioRecord> records = [];

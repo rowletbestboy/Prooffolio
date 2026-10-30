@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/portfolio_publication_repository.dart';
 import '../data/portfolio_site_generator.dart';
 import '../domain/portfolio_content.dart';
@@ -28,7 +29,6 @@ class PortfolioSitePreview extends StatefulWidget {
 
 class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
   late PortfolioSelection _selection;
-  PortfolioTemplate _template = PortfolioTemplate.light;
   late PortfolioSiteBundle? _bundle;
   Object? _generationError;
   PortfolioPublication? _publication;
@@ -60,7 +60,6 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
         _loadingPublication = false;
         if (publication?.isPublished == true) {
           _selection = publication!.selection;
-          _template = publication.template;
           _regenerate();
         }
       });
@@ -80,19 +79,12 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
     });
   }
 
-  void _updateTemplate(PortfolioTemplate template) {
-    setState(() {
-      _template = template;
-      _regenerate();
-    });
-  }
-
   void _regenerate() {
     try {
       _bundle = PortfolioSiteGenerator.generate(
         widget.content,
         _selection,
-        _template,
+        PortfolioTemplate.light,
       );
       _generationError = null;
     } on Object catch (error) {
@@ -199,9 +191,13 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
           ? await repository.updatePublished(
               widget.content,
               _selection,
-              _template,
+              PortfolioTemplate.light,
             )
-          : await repository.publish(widget.content, _selection, _template);
+          : await repository.publish(
+              widget.content,
+              _selection,
+              PortfolioTemplate.light,
+            );
       if (!mounted) return;
       setState(() => _publication = publication);
       _showMessage(active ? 'Website updated.' : 'Website published.');
@@ -445,7 +441,7 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
         widget.content.photoBytes.value != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Website preview')),
+      appBar: const AppPageAppBar(title: 'Website preview'),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -675,22 +671,8 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
                 ),
               ),
               const SizedBox(height: 12),
-              SegmentedButton<PortfolioTemplate>(
-                segments: const [
-                  ButtonSegment(
-                    value: PortfolioTemplate.light,
-                    label: Text('Light'),
-                    icon: Icon(Icons.light_mode_outlined),
-                  ),
-                  ButtonSegment(
-                    value: PortfolioTemplate.dark,
-                    label: Text('Dark'),
-                    icon: Icon(Icons.dark_mode_outlined),
-                  ),
-                ],
-                selected: {_template},
-                onSelectionChanged: (selected) =>
-                    _updateTemplate(selected.single),
+              const Text(
+                'One responsive design, with a light/dark toggle on the published website.',
               ),
               const SizedBox(height: 16),
               FilledButton.icon(

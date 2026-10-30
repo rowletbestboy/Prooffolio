@@ -8,8 +8,46 @@ import 'package:app_name/features/profile/data/profile_repository.dart';
 import 'package:app_name/features/profile/domain/profile.dart';
 import 'package:app_name/features/profile/presentation/profile_background_screen.dart';
 import 'package:app_name/features/dashboard/presentation/home_shell.dart';
+import 'package:app_name/core/theme/app_colors.dart';
+import 'package:app_name/core/theme/app_theme.dart';
+import 'package:app_name/core/widgets/app_brand_mark.dart';
 
 void main() {
+  testWidgets('profile editor keeps its shared brand and controls at 320 dp', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: ProfileBackgroundScreen(
+          repository: _FakeProfileBackgroundRepository(),
+          userId: 'user-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AppBrandMark), findsOneWidget);
+    expect(_themeCard, findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('profileHeadlineField')),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.byKey(const Key('profileHeadlineField')), findsOneWidget);
+    expect(find.byKey(const Key('saveProfileButton')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('an unsupported MIME type is not inferred from a trusted extension', () {
     final mimeType = ProfilePhotoPolicy.normaliseMimeType(
       'application/pdf',
@@ -611,6 +649,16 @@ void main() {
     },
   );
 }
+
+Finder get _themeCard => find.byWidgetPredicate((widget) {
+  if (widget is! Container || widget.decoration is! BoxDecoration) {
+    return false;
+  }
+  final decoration = widget.decoration! as BoxDecoration;
+  return decoration.color == AppColors.white &&
+      decoration.border == Border.all(color: AppColors.lightSlate) &&
+      decoration.borderRadius == BorderRadius.circular(AppTheme.cardRadius);
+});
 
 class _FakeProfileBackgroundRepository implements ProfileBackgroundRepository {
   ProfileBackground background = const ProfileBackground(

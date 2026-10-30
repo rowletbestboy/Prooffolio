@@ -117,6 +117,8 @@ class PortfolioProject {
     required this.description,
     required this.contribution,
     required this.technologies,
+    this.repositoryUrl = '',
+    this.demoUrl = '',
     required this.statusLabel,
     required this.startDate,
     required this.endDate,
@@ -129,6 +131,8 @@ class PortfolioProject {
     description: project.description,
     contribution: project.contribution,
     technologies: project.technologies,
+    repositoryUrl: project.repositoryUrl,
+    demoUrl: project.demoUrl,
     statusLabel: switch (project.status) {
       ProjectStatus.inProgress => 'In progress',
       ProjectStatus.completed => 'Completed',
@@ -144,6 +148,8 @@ class PortfolioProject {
   final String description;
   final String contribution;
   final List<String> technologies;
+  final String repositoryUrl;
+  final String demoUrl;
   final String statusLabel;
   final DateTime? startDate;
   final DateTime? endDate;

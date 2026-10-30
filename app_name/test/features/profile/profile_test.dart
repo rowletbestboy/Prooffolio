@@ -113,6 +113,75 @@ void main() {
     expect(nullValues.additionalLinks, isEmpty);
   });
 
+  test('contact readiness recognizes every supported contact method', () {
+    const profiles = <String, ProfileBackground>{
+      'contact email': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        contactEmail: 'avery@example.com',
+      ),
+      'phone': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        phone: '+1 555 0100',
+      ),
+      'GitHub': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        githubUrl: 'https://github.com/avery',
+      ),
+      'LinkedIn': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        linkedInUrl: 'https://www.linkedin.com/in/avery',
+      ),
+      'Upwork': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        upworkUrl: 'https://www.upwork.com/freelancers/~avery',
+      ),
+      'Jobstreet': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        jobstreetUrl: 'https://www.jobstreet.com/profile/avery',
+      ),
+      'WhatsApp': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        whatsAppNumber: '+15550100',
+      ),
+      'additional link URL': ProfileBackground(
+        displayName: 'Avery',
+        username: 'avery',
+        additionalLinks: [
+          ProfileContactLink(label: '', url: 'https://example.com'),
+        ],
+      ),
+    };
+
+    for (final entry in profiles.entries) {
+      expect(profileHasContactMethod(entry.value), isTrue, reason: entry.key);
+    }
+    expect(profileHasContactMethod(null), isFalse);
+  });
+
+  test('blank and whitespace-only contact values do not count', () {
+    const profile = ProfileBackground(
+      displayName: 'Avery',
+      username: 'avery',
+      contactEmail: ' ',
+      phone: '',
+      githubUrl: '  ',
+      linkedInUrl: '',
+      upworkUrl: ' ',
+      jobstreetUrl: '  ',
+      whatsAppNumber: '',
+      additionalLinks: [ProfileContactLink(label: 'Writing', url: ' ')],
+    );
+
+    expect(profileHasContactMethod(profile), isFalse);
+  });
+
   test('current volunteer experience permits no organization or end date', () {
     const draft = ExperienceDraft(
       title: 'Community garden coordinator',

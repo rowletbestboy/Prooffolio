@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_brand_mark.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/profile_repository.dart';
 import '../domain/profile.dart';
 
@@ -598,7 +600,10 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile and background')),
+      appBar: const AppPageAppBar(
+        title: 'Profile and background',
+        showBrand: false,
+      ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(20, 10, 20, 14),
         child: FilledButton(
@@ -670,10 +675,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const AppIconTile(
-                            icon: Icons.person_outline,
-                            size: 46,
-                          ),
+                          const AppBrandMark(compact: true),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
@@ -1227,7 +1229,9 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
               : AppColors.amberContainer,
         ),
         const SizedBox(width: 10),
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
       ],
     );
   }

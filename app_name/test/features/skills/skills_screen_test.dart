@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app_name/core/theme/app_colors.dart';
+import 'package:app_name/core/theme/app_theme.dart';
+import 'package:app_name/core/widgets/app_brand_mark.dart';
+import 'package:app_name/core/widgets/app_icon_tile.dart';
 import 'package:app_name/features/projects/data/project_repository.dart';
 import 'package:app_name/features/projects/domain/project.dart';
 import 'package:app_name/features/skills/data/skill_repository.dart';
@@ -7,11 +11,45 @@ import 'package:app_name/features/skills/domain/skill.dart';
 import 'package:app_name/features/skills/presentation/skills_screen.dart';
 
 void main() {
+  testWidgets('Skills page header carries the Prooffolio brand', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: SkillsScreen(
+          repository: _FakeSkillRepository(),
+          projectRepository: _FakeProjectRepository(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(AppBrandMark),
+      ),
+      findsOneWidget,
+    );
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.backgroundColor, AppColors.deepNavy);
+    expect(appBar.toolbarHeight, 56);
+    final brandMark = tester.widget<AppBrandMark>(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(AppBrandMark),
+      ),
+    );
+    expect(brandMark.inverse, isTrue);
+  });
+
   testWidgets('empty skills state makes adding a skill the clear next step', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light,
         home: SkillsScreen(
           repository: _FakeSkillRepository(),
           projectRepository: _FakeProjectRepository(),
@@ -23,6 +61,9 @@ void main() {
     expect(find.text('No skills yet'), findsOneWidget);
     expect(find.text('Add your first skill'), findsOneWidget);
     expect(find.textContaining('self-reported'), findsOneWidget);
+    final iconTile = tester.widget<AppIconTile>(find.byType(AppIconTile).first);
+    expect(iconTile.color, AppColors.teal);
+    expect(iconTile.backgroundColor, AppColors.tealContainer);
   });
 
   testWidgets('user can create a skill and link it to a project', (
@@ -31,6 +72,7 @@ void main() {
     final skills = _FakeSkillRepository();
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light,
         home: SkillsScreen(
           repository: skills,
           projectRepository: _FakeProjectRepository()..projects.add(_project()),
@@ -41,6 +83,22 @@ void main() {
 
     await tester.tap(find.text('Add your first skill'));
     await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byType(AppBrandMark),
+      ),
+      findsOneWidget,
+    );
+    final nameDecorator = tester.widget<InputDecorator>(
+      find
+          .descendant(
+            of: find.byKey(const Key('skillNameField')),
+            matching: find.byType(InputDecorator),
+          )
+          .first,
+    );
+    expect(nameDecorator.decoration.fillColor, AppColors.surfaceSubtle);
     await tester.enterText(find.byKey(const Key('skillNameField')), 'Dart');
     await tester.tap(find.byKey(const Key('skillStatusField')));
     await tester.pumpAndSettle();
@@ -55,12 +113,31 @@ void main() {
     expect(find.text('Dart'), findsOneWidget);
     expect(find.textContaining('Campus planner'), findsOneWidget);
     expect(find.text('Applied in a project'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration! as BoxDecoration).color ==
+                AppColors.indigoContainer,
+      ),
+      findsWidgets,
+    );
+    await tester.tap(find.byTooltip('Skill actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete skill'));
+    await tester.pumpAndSettle();
+    expect(_dialogBackground(tester), AppColors.white);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(skills.skills, hasLength(1));
   });
 
   testWidgets('skill form requires a name', (WidgetTester tester) async {
     final skills = _FakeSkillRepository();
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light,
         home: SkillsScreen(
           repository: skills,
           projectRepository: _FakeProjectRepository(),
@@ -77,6 +154,10 @@ void main() {
     expect(skills.skills, isEmpty);
   });
 }
+
+Color? _dialogBackground(WidgetTester tester) => Theme.of(
+  tester.element(find.byType(AlertDialog)),
+).dialogTheme.backgroundColor;
 
 Project _project() {
   final now = DateTime.utc(2026, 10, 20);

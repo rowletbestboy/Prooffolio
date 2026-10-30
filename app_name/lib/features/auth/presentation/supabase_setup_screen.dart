@@ -31,7 +31,7 @@ class SupabaseSetupScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
                       color: AppColors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AppTheme.cardRadius),
                       border: Border.all(color: AppColors.lightSlate),
                     ),
                     child: Column(
@@ -74,7 +74,9 @@ class SupabaseSetupScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppColors.indigoContainer,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.controlRadius,
+                      ),
                     ),
                     child: Text(
                       'Full dashboard instructions: docs/supabase-setup.md',

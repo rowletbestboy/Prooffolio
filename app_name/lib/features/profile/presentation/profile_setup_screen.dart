@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_mark.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../data/profile_repository.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -98,8 +99,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final textTheme = Theme.of(context).textTheme;
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Set up your profile'),
+      appBar: AppPageAppBar(
+        title: 'Set up your profile',
+        showBrand: false,
         actions: [
           IconButton(
             tooltip: 'Sign out',
@@ -129,7 +131,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       padding: const EdgeInsets.all(22),
                       decoration: BoxDecoration(
                         color: AppColors.white,
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.cardRadius,
+                        ),
                         border: Border.all(color: AppColors.lightSlate),
                       ),
                       child: Column(

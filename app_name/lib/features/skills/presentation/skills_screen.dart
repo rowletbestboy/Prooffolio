@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_icon_tile.dart';
+import '../../../core/widgets/app_page_app_bar.dart';
 import '../../projects/data/project_repository.dart';
 import '../../projects/domain/project.dart';
 import '../data/skill_repository.dart';
@@ -86,7 +87,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
     final theme = Theme.of(context);
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: const Text('Skills')),
+      appBar: const AppPageAppBar(title: 'Skills'),
       floatingActionButton: FutureBuilder<List<Skill>>(
         future: _skillsFuture,
         builder: (context, snapshot) => snapshot.data?.isNotEmpty == true
@@ -423,7 +424,7 @@ class _SkillFormScreenState extends State<_SkillFormScreen> {
     final theme = Theme.of(context);
     final pageGutter = AppTheme.pageGutterFor(MediaQuery.sizeOf(context).width);
     return Scaffold(
-      appBar: AppBar(title: Text(editing ? 'Edit skill' : 'Add skill')),
+      appBar: AppPageAppBar(title: editing ? 'Edit skill' : 'Add skill'),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
