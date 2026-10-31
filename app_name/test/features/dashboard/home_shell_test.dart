@@ -263,6 +263,34 @@ void main() {
     expect(find.byTooltip('Settings'), findsOneWidget);
   });
 
+  testWidgets('phone navigation is a full-width labeled bottom bar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+    await tester.pumpAndSettle();
+
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(scaffold.bottomNavigationBar, isA<NavigationBar>());
+
+    final navigation = find.byType(NavigationBar);
+    final navigationRect = tester.getRect(navigation);
+    expect(navigationRect.left, closeTo(0, 1));
+    expect(navigationRect.width, closeTo(390, 1));
+    expect(
+      tester.widget<NavigationBar>(navigation).labelBehavior,
+      NavigationDestinationLabelBehavior.alwaysShow,
+    );
+    expect(
+      find.byKey(const ValueKey('floating-bottom-navigation')),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'shows the saved greeting, milestone progress, counts, and recent projects',
     (tester) async {

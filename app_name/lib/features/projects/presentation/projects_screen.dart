@@ -96,7 +96,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     pageGutter,
                     12,
                     pageGutter,
-                    AppTheme.floatingNavigationContentInset +
+                    AppTheme.pageGutter +
                         MediaQuery.viewPaddingOf(context).bottom,
                   ),
                   children: [
@@ -253,8 +253,7 @@ class _EmptyProjectsState extends StatelessWidget {
           28,
           28,
           28,
-          AppTheme.floatingNavigationContentInset +
-              MediaQuery.viewPaddingOf(context).bottom,
+          AppTheme.pageGutter + MediaQuery.viewPaddingOf(context).bottom,
         ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),

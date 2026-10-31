@@ -128,7 +128,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
                     pageGutter,
                     12,
                     pageGutter,
-                    AppTheme.floatingNavigationContentInset +
+                    AppTheme.pageGutter +
                         MediaQuery.viewPaddingOf(context).bottom,
                   ),
                   children: [
@@ -416,8 +416,7 @@ class _EmptySkillsState extends StatelessWidget {
           28,
           28,
           28,
-          AppTheme.floatingNavigationContentInset +
-              MediaQuery.viewPaddingOf(context).bottom,
+          AppTheme.pageGutter + MediaQuery.viewPaddingOf(context).bottom,
         ),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),

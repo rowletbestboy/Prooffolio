@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:app_name/core/theme/app_colors.dart';
 import 'package:app_name/features/auth/data/auth_service.dart';
 import 'package:app_name/features/auth/presentation/auth_screen.dart';
 import 'package:app_name/features/auth/presentation/new_password_screen.dart';
@@ -194,35 +193,25 @@ void main() {
     );
   });
 
-  testWidgets('bottom navigation floats over the page content area', (
+  testWidgets('bottom navigation occupies its scaffold slot', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
 
+    final scaffoldFinder = find.byType(Scaffold).first;
+    final scaffold = tester.widget<Scaffold>(scaffoldFinder);
     final body = tester.getRect(find.byKey(const ValueKey('home-shell-body')));
     final pageContent = tester.getRect(find.byType(IndexedStack));
-    final navigation = tester.getRect(
-      find.byKey(const ValueKey('floating-bottom-navigation')),
-    );
+    final navigation = tester.getRect(find.byType(NavigationBar));
 
-    expect(navigation.width, lessThanOrEqualTo(420));
+    expect(scaffold.bottomNavigationBar, isA<NavigationBar>());
     expect(pageContent.bottom, body.bottom);
-    expect(navigation.top, lessThan(body.bottom));
-    expect(navigation.bottom, lessThan(body.bottom));
-    expect(
-      find.ancestor(
-        of: find.byKey(const ValueKey('floating-bottom-navigation')),
-        matching: find.byKey(const ValueKey('home-shell-body')),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      tester.widget<Scaffold>(find.byType(Scaffold).first).bottomNavigationBar,
-      isNull,
-    );
+    expect(navigation.left, closeTo(0, 1));
+    expect(navigation.width, closeTo(tester.getSize(scaffoldFinder).width, 1));
+    expect(navigation.top, closeTo(body.bottom, 1));
   });
 
-  testWidgets('home scroll content clears the floating navigation', (
+  testWidgets('home scroll content ends above the bottom navigation', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
@@ -232,7 +221,7 @@ void main() {
     final padding = listView.padding! as EdgeInsets;
     expect(tester.getSize(find.byType(ListView).first).height, greaterThan(0));
 
-    expect(padding.bottom, greaterThanOrEqualTo(104));
+    expect(padding.bottom, closeTo(24, 1));
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -2000));
     await tester.pumpAndSettle();
@@ -240,9 +229,7 @@ void main() {
     final lastContent = tester.getRect(
       find.text('Your portfolio stays private until you choose what to share.'),
     );
-    final navigation = tester.getRect(
-      find.byKey(const ValueKey('floating-bottom-navigation')),
-    );
+    final navigation = tester.getRect(find.byType(NavigationBar));
     expect(lastContent.bottom, lessThan(navigation.top));
   });
 
@@ -284,7 +271,7 @@ void main() {
                   .padding!
               as EdgeInsets)
           .bottom,
-      greaterThanOrEqualTo(104),
+      closeTo(24, 1),
     );
 
     await _tapDestination(tester, Icons.lightbulb_outline);
@@ -298,7 +285,7 @@ void main() {
                   .padding!
               as EdgeInsets)
           .bottom,
-      greaterThanOrEqualTo(104),
+      closeTo(24, 1),
     );
 
     await _tapDestination(tester, Icons.public_outlined);
@@ -308,7 +295,7 @@ void main() {
       (tester.widget<ListView>(find.byType(ListView).first).padding!
               as EdgeInsets)
           .bottom,
-      greaterThanOrEqualTo(104),
+      closeTo(24, 1),
     );
 
     await _tapDestination(tester, Icons.person_outline);
@@ -322,7 +309,7 @@ void main() {
                   .padding!
               as EdgeInsets)
           .bottom,
-      greaterThanOrEqualTo(104),
+      closeTo(24, 1),
     );
 
     await _tapDestination(tester, Icons.home_outlined);
@@ -330,38 +317,21 @@ void main() {
     expect(find.text('PORTFOLIO COMPLETION'), findsOneWidget);
   });
 
-  testWidgets('bottom navigation is a floating light icon-only capsule', (
+  testWidgets('bottom navigation uses the standard labeled bar style', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
 
-    final floatingBar = tester.widget<Container>(
-      find.byKey(const ValueKey('floating-bottom-navigation')),
-    );
-    final decoration = floatingBar.decoration! as BoxDecoration;
     final navigation = tester.widget<NavigationBar>(find.byType(NavigationBar));
 
-    expect(decoration.color, AppColors.softLavender);
-    expect(decoration.borderRadius, BorderRadius.circular(28));
-    expect(decoration.boxShadow, isNotEmpty);
     expect(
       navigation.labelBehavior,
-      NavigationDestinationLabelBehavior.alwaysHide,
+      NavigationDestinationLabelBehavior.alwaysShow,
     );
-    expect(navigation.backgroundColor, Colors.transparent);
-    expect(navigation.height, 56);
     expect(
-      tester.getSize(find.byType(NavigationBar)).height,
-      greaterThanOrEqualTo(48),
-    );
-    final capsuleRect = tester.getRect(
       find.byKey(const ValueKey('floating-bottom-navigation')),
+      findsNothing,
     );
-    final navigationRect = tester.getRect(find.byType(NavigationBar));
-    expect(navigationRect.left - capsuleRect.left, greaterThanOrEqualTo(8));
-    expect(capsuleRect.right - navigationRect.right, greaterThanOrEqualTo(8));
-    expect(navigationRect.top - capsuleRect.top, greaterThanOrEqualTo(6));
-    expect(capsuleRect.bottom - navigationRect.bottom, greaterThanOrEqualTo(6));
   });
 }
 

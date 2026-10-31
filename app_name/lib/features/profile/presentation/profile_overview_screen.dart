@@ -141,7 +141,7 @@ class _ProfileOverviewScreenState extends State<ProfileOverviewScreen> {
                     gutter,
                     14,
                     gutter,
-                    AppTheme.floatingNavigationContentInset +
+                    AppTheme.pageGutter +
                         MediaQuery.viewPaddingOf(context).bottom,
                   ),
                   children: [

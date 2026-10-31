@@ -7,8 +7,6 @@ abstract final class AppTheme {
   static const double contentMaxWidth = 720;
   static const double cardRadius = 20;
   static const double controlRadius = 15;
-  static const double floatingNavigationContentInset = 104;
-
   static double pageGutterFor(double viewportWidth) => switch (viewportWidth) {
     < 360 => 16,
     < 600 => 20,

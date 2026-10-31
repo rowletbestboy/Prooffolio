@@ -93,8 +93,7 @@ class _PortfolioPreviewScreenState extends State<PortfolioPreviewScreen> {
                 gutter,
                 16,
                 gutter,
-                AppTheme.floatingNavigationContentInset +
-                    MediaQuery.viewPaddingOf(context).bottom,
+                AppTheme.pageGutter + MediaQuery.viewPaddingOf(context).bottom,
               ),
               children: [
                 _PortfolioPageHeader(

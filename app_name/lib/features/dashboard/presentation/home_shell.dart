@@ -311,10 +311,15 @@ class _HomeShellState extends State<HomeShell> {
         tooltip: 'Profile',
       ),
     ];
-    final bottomSafeInset = MediaQuery.viewPaddingOf(context).bottom;
-    const navigationHeight = 56.0;
-    const navigationBottomSpacing = 12.0;
     return Scaffold(
+      bottomNavigationBar: wideLayout
+          ? null
+          : NavigationBar(
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _selectDestination,
+              destinations: destinations,
+            ),
       body: Stack(
         key: const ValueKey('home-shell-body'),
         children: [
@@ -341,51 +346,6 @@ class _HomeShellState extends State<HomeShell> {
               ],
             ),
           ),
-          if (!wideLayout)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: bottomSafeInset + navigationBottomSpacing,
-              child: Center(
-                heightFactor: 1,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Container(
-                    key: const ValueKey('floating-bottom-navigation'),
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: AppColors.softLavender,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.deepNavy.withValues(alpha: .14),
-                          blurRadius: 22,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      child: NavigationBar(
-                        height: navigationHeight,
-                        backgroundColor: Colors.transparent,
-                        surfaceTintColor: Colors.transparent,
-                        elevation: 0,
-                        indicatorColor: AppColors.indigoContainer,
-                        labelBehavior:
-                            NavigationDestinationLabelBehavior.alwaysHide,
-                        selectedIndex: _selectedIndex,
-                        onDestinationSelected: _selectDestination,
-                        destinations: destinations,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -605,7 +565,7 @@ class _HomePageState extends State<_HomePage> {
                       pageGutter,
                       18,
                       pageGutter,
-                      AppTheme.floatingNavigationContentInset +
+                      AppTheme.pageGutter +
                           MediaQuery.viewPaddingOf(context).bottom,
                     ),
                     children: [
@@ -1661,8 +1621,7 @@ class _EmptyDestinationPage extends StatelessWidget {
               24,
               18,
               24,
-              AppTheme.floatingNavigationContentInset +
-                  MediaQuery.viewPaddingOf(context).bottom,
+              AppTheme.pageGutter + MediaQuery.viewPaddingOf(context).bottom,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
