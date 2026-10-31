@@ -338,6 +338,62 @@ void main() {
     expect(styles, contains('object-fit: cover'));
   });
 
+  test('masthead places the title and copy beside the profile image', () async {
+    final bundle = await PortfolioSiteGenerator.generate(
+      content,
+      selection,
+      PortfolioTemplate.light,
+    );
+    final html = utf8.decode(bundle.files['index.html']!);
+
+    expect(
+      html,
+      contains(
+        '<div class="mast-body"><div class="mast-copy">'
+        '<h1 class="headline">Alex &lt;script&gt;alert(1)&lt;/script&gt;',
+      ),
+    );
+  });
+
+  test(
+    'responsive hero and project actions stay centered on small screens',
+    () async {
+      final bundle = await PortfolioSiteGenerator.generate(
+        content,
+        selection,
+        PortfolioTemplate.light,
+      );
+      final styles = utf8.decode(bundle.files['styles.css']!);
+
+      expect(
+        styles,
+        matches(RegExp(r'\.mast-body\s*\{[^}]*align-items:\s*start;')),
+      );
+      expect(
+        styles,
+        matches(RegExp(r'\.hero-aside\s*\{[^}]*justify-items:\s*center;')),
+      );
+      expect(
+        styles,
+        matches(RegExp(r'\.hero-photo-frame\s*\{[^}]*justify-self:\s*center;')),
+      );
+      expect(
+        styles,
+        matches(
+          RegExp(
+            r'\.facts\s*\{[^}]*width:\s*min\(100%,\s*22rem\);[^}]*margin-inline:\s*auto;',
+          ),
+        ),
+      );
+      expect(
+        styles,
+        matches(
+          RegExp(r'\.entry \.actions\s*\{[^}]*justify-content:\s*center;'),
+        ),
+      );
+    },
+  );
+
   test(
     'ZIP archive can be opened and preserves generated file bytes',
     () async {

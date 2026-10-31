@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/portfolio_content.dart';
@@ -111,7 +112,7 @@ class SupabasePortfolioPublicationRepository
     if (base == null) {
       throw StateError(
         'Website publishing is not configured. Set '
-        'PORTFOLIO_PUBLIC_BASE_URL to the public published-portfolios bucket URL.',
+        'PORTFOLIO_PUBLIC_BASE_URL to the public portfolio Worker URL.',
       );
     }
     final slug = username.toLowerCase();
@@ -120,7 +121,7 @@ class SupabasePortfolioPublicationRepository
         'The profile username is not a valid website slug.',
       );
     }
-    return '${base.toString().replaceFirst(RegExp(r'/$'), '')}/$slug/index.html';
+    return '${base.toString().replaceFirst(RegExp(r'/$'), '')}/$slug/';
   }
 
   @override
@@ -325,9 +326,10 @@ class SupabasePortfolioPublicationRepository
 }
 
 class SupabasePortfolioPublicationStore implements PortfolioPublicationStore {
-  const SupabasePortfolioPublicationStore(this._client);
+  const SupabasePortfolioPublicationStore(this._client, {this.uploadClient});
 
   final SupabaseClient _client;
+  final http.Client? uploadClient;
 
   @override
   String? get authenticatedUserId => _client.auth.currentUser?.id;
@@ -427,15 +429,7 @@ class SupabasePortfolioPublicationStore implements PortfolioPublicationStore {
     for (final entry in files.entries.where(
       (entry) => entry.key != 'index.html',
     )) {
-      await storage.uploadBinary(
-        '$username/${entry.key}',
-        entry.value,
-        fileOptions: FileOptions(
-          cacheControl: '60',
-          contentType: _contentType(entry.key),
-          upsert: true,
-        ),
-      );
+      await _uploadFile(username, entry.key, entry.value, cacheControl: '60');
     }
 
     final removed = existingNames
@@ -445,15 +439,65 @@ class SupabasePortfolioPublicationStore implements PortfolioPublicationStore {
     if (removed.isNotEmpty) await storage.remove(removed);
 
     if (files['index.html'] case final html?) {
-      await storage.uploadBinary(
-        '$username/index.html',
-        html,
-        fileOptions: const FileOptions(
-          cacheControl: '60',
-          contentType: 'text/html',
-          upsert: true,
-        ),
-      );
+      if (existingNames.contains('index.html')) {
+        await storage.remove(['$username/index.html']);
+      }
+      await _uploadFile(username, 'index.html', html, cacheControl: '0');
+    }
+  }
+
+  Future<void> _uploadFile(
+    String username,
+    String fileName,
+    Uint8List bytes, {
+    required String cacheControl,
+  }) async {
+    final session = await _client.auth.getSession();
+    if (session == null) {
+      throw const AuthException('Please sign in again.');
+    }
+
+    final request =
+        http.MultipartRequest(
+            'POST',
+            Uri.parse(
+              '${_client.storage.url}/object/$_publishedBucket/$username/$fileName',
+            ),
+          )
+          ..headers.addAll({
+            ..._client.storage.headers,
+            'Authorization': 'Bearer ${session.accessToken}',
+            'x-upsert': 'true',
+          })
+          ..fields['cacheControl'] = cacheControl
+          ..fields['contentType'] = _contentType(fileName)
+          ..files.add(
+            http.MultipartFile.fromBytes(
+              'file',
+              bytes,
+              filename: fileName,
+              contentType: http.MediaType.parse(_contentType(fileName)),
+            ),
+          );
+
+    final client = uploadClient ?? http.Client();
+    try {
+      final streamedResponse = await client.send(request);
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError(
+          'Uploading published website file "$fileName" failed '
+          '(${response.statusCode}): ${response.body}',
+        );
+      }
+      final result = jsonDecode(response.body);
+      if (result is! Map || result['Key'] is! String) {
+        throw FormatException(
+          'Uploading published website file "$fileName" returned an invalid response.',
+        );
+      }
+    } finally {
+      if (uploadClient == null) client.close();
     }
   }
 
@@ -493,6 +537,7 @@ class SupabasePortfolioPublicationStore implements PortfolioPublicationStore {
   }
 
   static String _contentType(String fileName) => switch (fileName) {
+    'index.html' => 'text/html',
     'styles.css' => 'text/css',
     'app.js' => 'text/javascript',
     'portfolio-photo.jpg' => 'image/jpeg',

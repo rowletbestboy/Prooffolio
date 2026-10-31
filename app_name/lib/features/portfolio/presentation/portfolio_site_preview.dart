@@ -40,6 +40,7 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
   Object? _publicationError;
   bool _loadingPublication = false;
   bool _publishing = false;
+  String? _publicationMessage;
   bool _isMobilePreview = false;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _selectionOptionsKey = GlobalKey();
@@ -209,19 +210,28 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
           'versions outside Prooffolio may persist after unpublishing.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Review again'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(active ? 'Update now' : 'Publish now'),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Review again'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(active ? 'Update now' : 'Publish now'),
+              ),
+            ],
           ),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _publishing = true);
+    setState(() {
+      _publishing = true;
+      _publicationMessage = null;
+    });
     try {
       final publication = active
           ? await repository.updatePublished(
@@ -235,11 +245,17 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
               PortfolioTemplate.light,
             );
       if (!mounted) return;
-      setState(() => _publication = publication);
-      _showMessage(active ? 'Website updated.' : 'Website published.');
+      setState(() {
+        _publication = publication;
+        _publicationMessage = active
+            ? 'Website updated.'
+            : 'Website published.';
+      });
     } on Object catch (error) {
       if (mounted) {
-        _showMessage('Website could not be published: $error');
+        setState(
+          () => _publicationMessage = 'Website could not be published: $error',
+        );
       }
     } finally {
       if (mounted) setState(() => _publishing = false);
@@ -268,13 +284,19 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
           'outside Prooffolio.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep published'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm unpublish'),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Keep published'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Confirm unpublish'),
+              ),
+            ],
           ),
         ],
       ),
@@ -423,6 +445,8 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
     return _SelectionCard(
       title: 'Publishing',
       children: [
+        if (_publicationMessage case final message?)
+          Semantics(liveRegion: true, child: Text(message)),
         if (_loadingPublication)
           const LinearProgressIndicator()
         else if (_publicationError case final error?)
@@ -599,7 +623,9 @@ class _PortfolioSitePreviewState extends State<PortfolioSitePreview> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
-                    onPressed: _bundle == null || _generating ? null : _download,
+                    onPressed: _bundle == null || _generating
+                        ? null
+                        : _download,
                     icon: const Icon(Icons.download_outlined),
                     label: const Text('Download website ZIP'),
                   ),

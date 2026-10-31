@@ -94,7 +94,7 @@ ul, ol { list-style: none; }
 .masthead { padding-block: clamp(36px, 6vw, 80px) clamp(40px, 6vw, 72px); }
 .mast-meta {
   display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;
-  padding-bottom: 14px; border-bottom: 1px solid var(--ink); margin-bottom: clamp(28px, 5vw, 56px);
+  padding-bottom: 14px; border-bottom: 1px solid var(--ink);
 }
 .mast-meta .avail { color: var(--accent); }
 .mast-meta .avail::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: 1px; }
@@ -194,6 +194,10 @@ ul, ol { list-style: none; }
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
   .mast-body, .section-grid, .entry { grid-template-columns: minmax(0, 1fr); }
+  .hero-aside { justify-items: center; }
+  .hero-photo-frame { justify-self: center; }
+  .facts { width: min(100%, 22rem); margin-inline: auto; }
+  .entry .actions { justify-content: center; }
   .editorial-record { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .entry-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .caps { grid-template-columns: minmax(0, 1fr); }

@@ -183,7 +183,7 @@ void main() {
     expect(find.text('Prooffolio'), findsOneWidget);
   });
 
-  testWidgets('home content fills the page behind bottom navigation', (
+  testWidgets('home content fills the space above bottom navigation', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeShell()));
@@ -205,9 +205,21 @@ void main() {
       find.byKey(const ValueKey('floating-bottom-navigation')),
     );
 
-    expect(navigation.bottom, lessThan(body.bottom));
+    expect(navigation.width, lessThanOrEqualTo(420));
     expect(pageContent.bottom, body.bottom);
-    expect(pageContent.bottom, greaterThan(navigation.top));
+    expect(navigation.top, lessThan(body.bottom));
+    expect(navigation.bottom, lessThan(body.bottom));
+    expect(
+      find.ancestor(
+        of: find.byKey(const ValueKey('floating-bottom-navigation')),
+        matching: find.byKey(const ValueKey('home-shell-body')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Scaffold>(find.byType(Scaffold).first).bottomNavigationBar,
+      isNull,
+    );
   });
 
   testWidgets('home scroll content clears the floating navigation', (
@@ -218,6 +230,7 @@ void main() {
 
     final listView = tester.widget<ListView>(find.byType(ListView).first);
     final padding = listView.padding! as EdgeInsets;
+    expect(tester.getSize(find.byType(ListView).first).height, greaterThan(0));
 
     expect(padding.bottom, greaterThanOrEqualTo(104));
 
@@ -328,7 +341,7 @@ void main() {
     final decoration = floatingBar.decoration! as BoxDecoration;
     final navigation = tester.widget<NavigationBar>(find.byType(NavigationBar));
 
-    expect(decoration.color, AppColors.cloudWhite);
+    expect(decoration.color, AppColors.softLavender);
     expect(decoration.borderRadius, BorderRadius.circular(28));
     expect(decoration.boxShadow, isNotEmpty);
     expect(
@@ -336,7 +349,19 @@ void main() {
       NavigationDestinationLabelBehavior.alwaysHide,
     );
     expect(navigation.backgroundColor, Colors.transparent);
-    expect(navigation.height, 64);
+    expect(navigation.height, 56);
+    expect(
+      tester.getSize(find.byType(NavigationBar)).height,
+      greaterThanOrEqualTo(48),
+    );
+    final capsuleRect = tester.getRect(
+      find.byKey(const ValueKey('floating-bottom-navigation')),
+    );
+    final navigationRect = tester.getRect(find.byType(NavigationBar));
+    expect(navigationRect.left - capsuleRect.left, greaterThanOrEqualTo(8));
+    expect(capsuleRect.right - navigationRect.right, greaterThanOrEqualTo(8));
+    expect(navigationRect.top - capsuleRect.top, greaterThanOrEqualTo(6));
+    expect(capsuleRect.bottom - navigationRect.bottom, greaterThanOrEqualTo(6));
   });
 }
 

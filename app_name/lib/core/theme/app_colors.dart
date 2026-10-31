@@ -11,6 +11,7 @@ abstract final class AppColors {
   static const Color teal = Color(0xFF087C82);
   static const Color amber = Color(0xFF9A5B00);
   static const Color cloudWhite = Color(0xFFF7F9FF);
+  static const Color softLavender = Color(0xFFEEF2FF);
   static const Color surfaceSubtle = Color(0xFFF9FBFF);
   static const Color slateBlack = Color(0xFF172D58);
   static const Color slateGray = Color(0xFF52698F);

@@ -1,0 +1,5 @@
+-keep interface kotlin.coroutines.Continuation { *; }
+-keep class kotlin.coroutines.intrinsics.** { *; }
+-keep class kotlin.Result { *; }
+-keep class kotlin.Result$Failure { *; }
+-keep class kotlin.Unit { *; }

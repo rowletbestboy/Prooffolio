@@ -312,7 +312,7 @@ class _HomeShellState extends State<HomeShell> {
       ),
     ];
     final bottomSafeInset = MediaQuery.viewPaddingOf(context).bottom;
-    const navigationHeight = 64.0;
+    const navigationHeight = 56.0;
     const navigationBottomSpacing = 12.0;
     return Scaffold(
       body: Stack(
@@ -350,25 +350,29 @@ class _HomeShellState extends State<HomeShell> {
                 heightFactor: 1,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: Container(
-                      key: const ValueKey('floating-bottom-navigation'),
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.cloudWhite,
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.deepNavy.withValues(alpha: .14),
-                            blurRadius: 22,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
+                  child: Container(
+                    key: const ValueKey('floating-bottom-navigation'),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: AppColors.softLavender,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.deepNavy.withValues(alpha: .14),
+                          blurRadius: 22,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
                       ),
                       child: NavigationBar(
                         height: navigationHeight,
                         backgroundColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
                         elevation: 0,
                         indicatorColor: AppColors.indigoContainer,
                         labelBehavior:

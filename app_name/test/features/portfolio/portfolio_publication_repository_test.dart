@@ -32,7 +32,7 @@ void main() {
       expect(result.username, 'alex_doe');
       expect(
         repository.publicUrl(result.username),
-        '$publicBaseUrl/alex_doe/index.html',
+        'https://portfolio.example.test/alex_doe/',
       );
       expect(store.files.keys.toSet(), {'index.html', 'styles.css', 'app.js'});
       final html = utf8.decode(store.files['index.html']!);
@@ -44,6 +44,19 @@ void main() {
       expect(result.selection.projectIds, {'private-project-id'});
     },
   );
+
+  test('public URL handles a trailing slash on the Worker origin', () {
+    final repository = _repository(
+      _MemoryPublicationStore(),
+      content,
+      baseUrl: 'https://portfolio.example.test/',
+    );
+
+    expect(
+      repository.publicUrl('alex_doe'),
+      'https://portfolio.example.test/alex_doe/',
+    );
+  });
 
   test(
     'stale preview is rejected before any public object is written',
@@ -131,18 +144,18 @@ void main() {
 
 SupabasePortfolioPublicationRepository _repository(
   _MemoryPublicationStore store,
-  PortfolioContent currentContent,
-) => SupabasePortfolioPublicationRepository(
+  PortfolioContent currentContent, {
+  String baseUrl = publicBaseUrl,
+}) => SupabasePortfolioPublicationRepository(
   store: store,
   loadPrivateContent: (userId) async {
     store.loadedUserIds.add(userId);
     return currentContent;
   },
-  publicBaseUrl: publicBaseUrl,
+  publicBaseUrl: baseUrl,
 );
 
-const publicBaseUrl =
-    'https://portfolio.example.test/storage/v1/object/public/published-portfolios';
+const publicBaseUrl = 'https://portfolio.example.test';
 
 PortfolioContent _portfolioContent({String displayName = 'Alex Doe'}) =>
     PortfolioContent(

@@ -6,8 +6,7 @@ import 'package:app_name/features/portfolio/presentation/portfolio_site_preview.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _baseUrl =
-    'https://portfolio.example.test/storage/v1/object/public/published-portfolios';
+const _baseUrl = 'https://portfolio.example.test';
 
 void main() {
   testWidgets(
@@ -48,7 +47,12 @@ void main() {
 
       expect(repository.publishCalls, 0);
       expect(find.textContaining('will be public'), findsOneWidget);
-      expect(find.textContaining('alex_doe/index.html'), findsOneWidget);
+      expect(find.textContaining('alex_doe/'), findsOneWidget);
+      final dialogRect = tester.getRect(find.byType(AlertDialog));
+      expect(
+        tester.getCenter(find.text('Review again')).dx,
+        closeTo(dialogRect.center.dx, 1),
+      );
       await tester.tap(find.text('Publish now'));
       await tester.pumpAndSettle();
 
@@ -56,7 +60,7 @@ void main() {
       expect(repository.publishedSelection?.includeDisplayName, isTrue);
       expect(repository.publishedSelection?.includeEmail, isTrue);
       expect(repository.publishedSelection?.projectIds, {'project-id'});
-      expect(find.textContaining('alex_doe/index.html'), findsOneWidget);
+      expect(find.textContaining('alex_doe/'), findsOneWidget);
     },
   );
 
@@ -86,7 +90,7 @@ void main() {
         isTrue,
       );
       expect(find.text('Update published website'), findsOneWidget);
-      expect(find.textContaining('alex_doe/index.html'), findsOneWidget);
+      expect(find.textContaining('alex_doe/'), findsOneWidget);
 
       await tester.tap(find.text('Update published website'));
       await tester.pumpAndSettle();
@@ -95,6 +99,9 @@ void main() {
       await tester.tap(find.text('Update now'));
       await tester.pumpAndSettle();
       expect(repository.updateCalls, 1);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.text('Website updated.'), findsOneWidget);
 
       await tester.tap(find.text('Unpublish website'));
       await tester.pumpAndSettle();
@@ -110,6 +117,41 @@ void main() {
       expect(find.text('Publish Portfolio'), findsOneWidget);
     },
   );
+
+  testWidgets('failed updates leave a visible error message', (tester) async {
+    _setLargeViewport(tester);
+    final repository = _FakePublicationRepository(
+      status: _activePublication,
+      updateError: StateError('Storage rejected upload'),
+    );
+    await _preparePortfolioTemplate(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PortfolioSitePreview(
+          content: _content,
+          userId: 'owner-id',
+          publicationRepository: repository,
+          previewBuilder: (context, html) => Text(html),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _waitForPortfolioGeneration(tester);
+
+    await tester.tap(find.text('Update published website'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update now'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining(
+        'Website could not be published: Bad state: Storage rejected upload',
+      ),
+      findsOneWidget,
+    );
+  });
 }
 
 void _setLargeViewport(WidgetTester tester) {
@@ -188,9 +230,10 @@ final _activePublication = PortfolioPublication(
 );
 
 class _FakePublicationRepository implements PortfolioPublicationRepository {
-  _FakePublicationRepository({this.status});
+  _FakePublicationRepository({this.status, this.updateError});
 
   PortfolioPublication? status;
+  Object? updateError;
   int publishCalls = 0;
   int updateCalls = 0;
   int unpublishCalls = 0;
@@ -200,7 +243,7 @@ class _FakePublicationRepository implements PortfolioPublicationRepository {
   bool get isConfigured => true;
 
   @override
-  String publicUrl(String username) => '$_baseUrl/$username/index.html';
+  String publicUrl(String username) => '$_baseUrl/$username/';
 
   @override
   Future<PortfolioPublication?> loadStatus(String userId) async => status;
@@ -224,6 +267,7 @@ class _FakePublicationRepository implements PortfolioPublicationRepository {
     PortfolioTemplate template,
   ) async {
     updateCalls++;
+    if (updateError case final error?) throw error;
     publishedSelection = selection;
     status = _activePublication;
     return status!;

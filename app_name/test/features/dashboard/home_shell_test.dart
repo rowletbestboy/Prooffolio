@@ -216,6 +216,11 @@ void main() {
     await tester.tap(find.text('Log out'));
     await tester.pumpAndSettle();
     expect(find.text('Log out of Prooffolio?'), findsOneWidget);
+    final dialogRect = tester.getRect(find.byType(AlertDialog));
+    expect(
+      tester.getCenter(find.text('Cancel')).dx,
+      closeTo(dialogRect.center.dx, 1),
+    );
     await tester.tap(find.text('Log out').last);
     await tester.pumpAndSettle();
     expect(signOutCalls, 1);

@@ -44,6 +44,7 @@ dependencies:
   printing: ^5.14.3
   docx_dart: ^1.2.0
   image: ^4.3.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

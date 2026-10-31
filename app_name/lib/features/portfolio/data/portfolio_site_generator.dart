@@ -302,13 +302,12 @@ abstract final class PortfolioSiteGenerator {
     } else if (headline.isNotEmpty) {
       output.write('<span class="label">${_escapeText(headline)}</span>');
     }
-    output
-      ..write('</div>')
-      ..write('<h1 class="headline">$shownName');
+    output.write('</div><div class="mast-body"><div class="mast-copy">');
+    output.write('<h1 class="headline">$shownName');
     if (headline.isNotEmpty && displayName.isNotEmpty) {
       output.write('<br><em>${_escapeText(headline)}</em>');
     }
-    output.write('</h1><div class="mast-body"><div>');
+    output.write('</h1>');
     if (bio.isNotEmpty) {
       output.write('<p class="standfirst">${_escapeText(bio)}</p>');
     } else if (occupation.isNotEmpty && occupation != headline) {
