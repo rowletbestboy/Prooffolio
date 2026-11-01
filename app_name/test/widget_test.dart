@@ -90,7 +90,8 @@ void main() {
     expect(authService.signUpCalls, 1);
     expect(authService.displayName, 'Avery Student');
     expect(authService.username, 'avery_student');
-    expect(find.textContaining('Check your inbox'), findsOneWidget);
+    expect(find.text('Verify your email'), findsOneWidget);
+    expect(find.textContaining('a@b.com'), findsOneWidget);
   });
 
   testWidgets('profile setup requires a display name and valid username', (
@@ -364,6 +365,18 @@ class _FakeAuthService implements AuthService {
 
   @override
   Future<void> resetPassword({required String email}) async {}
+
+  @override
+  Future<void> resendSignupVerification({required String email}) async {}
+
+  @override
+  bool get currentUserEmailVerified => false;
+
+  @override
+  Stream<bool> get emailVerificationChanges => const Stream<bool>.empty();
+
+  @override
+  Future<void> signOut() async {}
 }
 
 class _FakeProfileRepository implements ProfileRepository {

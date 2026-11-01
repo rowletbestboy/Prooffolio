@@ -38,12 +38,12 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _user = widget.client.auth.currentUser;
+    _user = _verifiedUser(widget.client.auth.currentUser);
     _loadProfile();
     _subscription = widget.client.auth.onAuthStateChange.listen((event) {
       if (!mounted) return;
       setState(() {
-        _user = event.session?.user;
+        _user = _verifiedUser(event.session?.user);
         _isPasswordRecovery = event.event == AuthChangeEvent.passwordRecovery;
         _profileFuture = null;
       });
@@ -51,13 +51,18 @@ class _AuthGateState extends State<AuthGate> {
     });
   }
 
+  User? _verifiedUser(User? user) =>
+      user?.emailConfirmedAt == null ? null : user;
+
   void _loadProfile() {
     final user = _user;
     if (user != null) _profileFuture = _profiles.hasProfile(user.id);
   }
 
   Future<void> _refreshProfile() async {
-    setState(() => _profileFuture = _profiles.hasProfile(_user!.id));
+    setState(() {
+      _profileFuture = _profiles.hasProfile(_user!.id);
+    });
   }
 
   void _finishPasswordRecovery() {
@@ -119,11 +124,10 @@ class _AuthGateState extends State<AuthGate> {
           return ProfileSetupScreen(
             repository: _profiles,
             onComplete: () => _refreshProfile(),
-            initialDisplayName:
-                switch (user.userMetadata?['display_name']) {
-                  final String value => value,
-                  _ => '',
-                },
+            initialDisplayName: switch (user.userMetadata?['display_name']) {
+              final String value => value,
+              _ => '',
+            },
             initialUsername: switch (user.userMetadata?['username']) {
               final String value => value,
               _ => '',

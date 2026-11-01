@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_brand_mark.dart';
+import '../data/auth_error.dart';
 import '../data/auth_service.dart';
+import 'email_verification_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.authService});
@@ -94,9 +96,29 @@ class _AuthScreenState extends State<AuthScreen> {
           username: _usernameController.text.trim().toLowerCase(),
         );
         if (result.emailConfirmationRequired && mounted) {
-          setState(
-            () => _message =
-                'Check your inbox to confirm your email, then sign in to continue.',
+          final email = _emailController.text.trim();
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => EmailVerificationScreen(
+                email: email,
+                emailVerificationChanges:
+                    widget.authService.emailVerificationChanges,
+                onResend: () =>
+                    widget.authService.resendSignupVerification(email: email),
+                onCheckVerification: () async =>
+                    widget.authService.currentUserEmailVerified,
+                onBackToSignIn: () async {
+                  if (widget.authService.currentUserEmailVerified) {
+                    await widget.authService.signOut();
+                  }
+                  if (mounted) _setMode(false);
+                },
+                onSignIn: () async {
+                  await widget.authService.signOut();
+                  if (mounted) _setMode(false);
+                },
+              ),
+            ),
           );
         }
       } else {
@@ -106,25 +128,18 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _friendlyError(error));
+      logAuthFailure(error, operation: _isSignUp ? 'sign up' : 'sign in');
+      if (mounted) {
+        setState(
+          () => _error = authErrorMessage(
+            error,
+            operation: _isSignUp ? 'sign up' : 'sign in',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-
-  String _friendlyError(Object error) {
-    final message = error.toString().toLowerCase();
-    if (message.contains('invalid login credentials')) {
-      return 'That email and password combination was not recognized.';
-    }
-    if (message.contains('already registered') ||
-        message.contains('user already registered')) {
-      return 'An account already uses this email. Try signing in.';
-    }
-    if (message.contains('network') || message.contains('socket')) {
-      return 'Could not connect. Check your internet and try again.';
-    }
-    return 'We could not complete that request. Please try again.';
   }
 
   Future<void> _resetPassword() async {
@@ -148,7 +163,12 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _friendlyError(error));
+      logAuthFailure(error, operation: 'password reset');
+      if (mounted) {
+        setState(
+          () => _error = authErrorMessage(error, operation: 'password reset'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -55,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _signingOut = true);
     try {
       await onSignOut();
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (error, stackTrace) {
       FlutterError.reportError(
         FlutterErrorDetails(

@@ -224,6 +224,7 @@ void main() {
     await tester.tap(find.text('Log out').last);
     await tester.pumpAndSettle();
     expect(signOutCalls, 1);
+    expect(find.text('Settings'), findsNothing);
   });
 
   testWidgets('Profile is available from the fifth bottom navigation tab', (

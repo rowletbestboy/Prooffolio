@@ -20,7 +20,28 @@ void main() {
         ),
       );
 
-      expect(find.byType(Image), findsNWidgets(2));
+      final images = tester.widgetList<Image>(find.byType(Image)).toList();
+      expect(images, hasLength(2));
+      expect(
+        images[0].image,
+        isA<AssetImage>().having(
+          (asset) => asset.assetName,
+          'assetName',
+          'assets/prooffolio_logo_clean.png',
+        ),
+      );
+      expect(images[0].width, 150);
+      expect(images[0].height, 118);
+      expect(
+        images[1].image,
+        isA<AssetImage>().having(
+          (asset) => asset.assetName,
+          'assetName',
+          'assets/prooffolio_mark_clean.png',
+        ),
+      );
+      expect(images[1].width, 38);
+      expect(images[1].height, 38);
       expect(find.bySemanticsLabel('Prooffolio'), findsNWidgets(2));
       expect(tester.takeException(), isNull);
     } finally {

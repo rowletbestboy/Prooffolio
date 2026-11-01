@@ -256,4 +256,16 @@ class _FakeAuthService implements AuthService {
 
   @override
   Future<void> resetPassword({required String email}) async {}
+
+  @override
+  Future<void> resendSignupVerification({required String email}) async {}
+
+  @override
+  bool get currentUserEmailVerified => false;
+
+  @override
+  Stream<bool> get emailVerificationChanges => const Stream<bool>.empty();
+
+  @override
+  Future<void> signOut() async {}
 }
